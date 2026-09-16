@@ -1,0 +1,22 @@
+{"model_id": "algorithmic_random", "configuration_id": "algorithmic_random", "seed": 10001, "official_score": 2, "official_time_seconds": 103.19246435165405, "time_convention": "wall time at terminal event or external cutoff; source display never freezes", "rl_return": 10.0, "apples": 2, "steps": 506, "completed": false, "termination_reason": "self_collision", "final_length": 5, "decision_latency": 1.1405009905437376e-05, "decision_latency_p95": 2.7906500008612056e-05, "evaluation_step_budget": 600, "clock_hz": 5, "observed_move_hz": 4.893770039358629, "training_transitions": 0, "training_updates": 0, "training_wall_time": null, "demonstration_cost": 0, "simulation_cost": 0, "classability": "terminal game; official multi-trial aggregation unknown"}
+{"model_id": "algorithmic_random", "configuration_id": "algorithmic_random", "seed": 10002, "official_score": 1, "official_time_seconds": 122.21689105033875, "time_convention": "wall time at terminal event or external cutoff; source display never freezes", "rl_return": 10.0, "apples": 1, "steps": 600, "completed": false, "termination_reason": "external_step_limit", "final_length": 4, "decision_latency": 1.2803828264319842e-05, "decision_latency_p95": 3.4050301019306054e-05, "evaluation_step_budget": 600, "clock_hz": 5, "observed_move_hz": 4.901124527634922, "training_transitions": 0, "training_updates": 0, "training_wall_time": null, "demonstration_cost": 0, "simulation_cost": 0, "classability": "not established for externally interrupted games"}
+{"model_id": "algorithmic_random", "configuration_id": "algorithmic_random", "seed": 10003, "official_score": 2, "official_time_seconds": 106.55271768569946, "time_convention": "wall time at terminal event or external cutoff; source display never freezes", "rl_return": 10.0, "apples": 2, "steps": 523, "completed": false, "termination_reason": "self_collision", "final_length": 5, "decision_latency": 9.705005725161227e-06, "decision_latency_p95": 1.3841600230080067e-05, "evaluation_step_budget": 600, "clock_hz": 5, "observed_move_hz": 4.898984984564179, "training_transitions": 0, "training_updates": 0, "training_wall_time": null, "demonstration_cost": 0, "simulation_cost": 0, "classability": "terminal game; official multi-trial aggregation unknown"}
+{
+  "episodes": 3,
+  "score_mean": 1.6666666666666667,
+  "score_median": 2,
+  "score_max": 2,
+  "score_min": 1,
+  "score_std": 0.4714045207910317,
+  "completed": 0,
+  "completion_rate": 0.0,
+  "collision_rate": 0.6666666666666666,
+  "external_cutoffs": 1,
+  "target_223_rate": 0.0,
+  "terminal_time_mean_by_exact_score": {
+    "2": 104.87259101867676
+  },
+  "terminal_time_count_by_exact_score": {
+    "2": 2
+  }
+}

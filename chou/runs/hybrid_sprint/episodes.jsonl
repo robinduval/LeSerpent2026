@@ -1,0 +1,5 @@
+{"training_transitions": 10329, "score": 223, "steps": 10329, "completed": true, "rl_return": 1486.083333333187}
+{"training_transitions": 19623, "score": 223, "steps": 9294, "completed": true, "rl_return": 1348.5666666665377}
+{"training_transitions": 29003, "score": 223, "steps": 9380, "completed": true, "rl_return": 1392.5333333332032}
+{"training_transitions": 39827, "score": 223, "steps": 10824, "completed": true, "rl_return": 1484.4666666665169}
+{"training_transitions": 49860, "score": 223, "steps": 10033, "completed": true, "rl_return": 1468.1499999998596}

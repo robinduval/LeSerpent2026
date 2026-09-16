@@ -1,0 +1,16 @@
+{
+  "purpose": "held-out final test, never used for tuning or selection",
+  "seeds": [
+    20001,
+    20002,
+    20003,
+    20004,
+    20005
+  ],
+  "clock_hz": 5,
+  "max_steps": 2000,
+  "parallel_processes": 5,
+  "training_concurrent": false,
+  "selected_sha256": "3b3a0bf2cfb1e07e0c796a4439dec853d4e9519c1571f4876f991f31aaa93374",
+  "started_at": "2026-09-16T21:05:44+0200"
+}

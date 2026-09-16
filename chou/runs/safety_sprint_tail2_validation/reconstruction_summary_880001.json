@@ -1,0 +1,14 @@
+{
+  "kind": "offline_log_reconstruction",
+  "seed": 880001,
+  "steps_verified": 3659,
+  "all_actions_match": true,
+  "all_scores_match": true,
+  "filter_overrides": 1446,
+  "learned_choice_states": 2870,
+  "final_score_from_recorded_trace": 153,
+  "recorded_time_seconds": 745.4651000499725,
+  "terminal_from_reconstructed_recorded_actions": true,
+  "source_trace_sha256": "1c56e5478448d9c1fc2d0e0db2c45a40587a987018e53943bf1f1040f9796e2a",
+  "checkpoint_sha256": "c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c"
+}
