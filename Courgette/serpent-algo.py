@@ -22,8 +22,14 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_SEARCH_DIRS = [
     os.path.join(SCRIPT_DIR, "results"),
     os.path.join(SCRIPT_DIR, "results_compare"),
-    os.path.join(SCRIPT_DIR, "results_champion"),
+    os.path.join(SCRIPT_DIR, "results_final"),
 ]
+# Modèle standard utilisé par défaut (le plus abouti à ce jour : entraînement
+# A* + reward "shaped" incluant le bonus de score et le malus de temps).
+# Tous les autres modèles entraînés restent dans leurs dossiers (rien n'est
+# supprimé), mais le jeu ne demande plus de choisir : il charge celui-ci
+# directement.
+STANDARD_MODEL_PATH = os.path.join(SCRIPT_DIR, "results_compare", "astar-shaped_seed100_ep600_best.pth")
 
 # --- CONSTANTES DE JEU ---
 # Taille de la grille (20x20)
@@ -236,7 +242,10 @@ def relative_to_absolute(current_direction, relative_action):
 
 def find_available_models():
     """Liste tous les modèles entraînés trouvés (results/, results_compare/,
-    results_champion/), triés du plus récent au plus ancien."""
+    results_final/), triés du plus récent au plus ancien. Ils restent tous
+    présents sur le disque (rien n'est supprimé) : cette liste n'est plus
+    montrée à l'utilisateur (cf. load_trained_model), elle sert seulement de
+    repli si le modèle standard est absent."""
     paths = []
     for d in MODEL_SEARCH_DIRS:
         paths.extend(glob.glob(os.path.join(d, "*.pth")))
@@ -244,39 +253,18 @@ def find_available_models():
     return paths
 
 
-def choose_model_interactively():
-    """Affiche la liste des modèles entraînés disponibles et laisse
-    l'utilisateur choisir celui à utiliser au lancement du jeu (demandé :
-    pouvoir choisir le modèle plutôt que d'en imposer un automatiquement)."""
-    paths = find_available_models()
-    if not paths:
-        return None
-
-    print("\nModèles entraînés disponibles :")
-    for i, path in enumerate(paths):
-        rel = os.path.relpath(path, SCRIPT_DIR)
-        print(f"  [{i}] {rel}")
-    print("  [Entrée] = utiliser le plus récent (par défaut)")
-
-    choice = input(f"Quel modèle utiliser ? (0-{len(paths) - 1}, ou Entrée) : ").strip()
-    if choice == "":
-        return paths[0]
-    try:
-        idx = int(choice)
-        if 0 <= idx < len(paths):
-            return paths[idx]
-    except ValueError:
-        pass
-    print("Choix invalide, utilisation du plus récent par défaut.")
-    return paths[0]
-
-
 def load_trained_model(path=None):
-    """Charge le modèle donné (ou choisi interactivement si path=None).
-    Retourne (model, path) ou (None, None) si aucun modèle n'existe encore
-    (il faut d'abord lancer `python snake-ia.py train ...`)."""
+    """Charge directement le modèle standard (STANDARD_MODEL_PATH), sans rien
+    demander à l'utilisateur. Si ce fichier précis n'existe pas (renommé,
+    déplacé...), retombe silencieusement sur le modèle entraîné le plus
+    récent trouvé dans MODEL_SEARCH_DIRS. Retourne (model, path) ou
+    (None, None) si aucun modèle n'existe encore (il faut d'abord lancer
+    `python snake-ia.py train ...`)."""
     if path is None:
-        path = choose_model_interactively()
+        path = STANDARD_MODEL_PATH if os.path.exists(STANDARD_MODEL_PATH) else None
+        if path is None:
+            available = find_available_models()
+            path = available[0] if available else None
     if path is None or not os.path.exists(path):
         return None, None
     checkpoint = torch.load(path, map_location=DEVICE, weights_only=False)

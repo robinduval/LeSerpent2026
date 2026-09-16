@@ -1022,6 +1022,12 @@ def evaluate(model_path, n_games=20, real_clock=False, out_dir="results", quiet=
     # toutes les parties, qui ne correspondrait à aucune partie précise).
     best_idx = int(scores.argmax())
 
+    # best_ratio = le MEILLEUR ratio score/temps sur UNE SEULE partie parmi
+    # les n_games jouées (pas la moyenne) : souvent une partie différente de
+    # celle du meilleur score, une partie courte et rapide peut avoir un
+    # meilleur ratio qu'une partie longue à score élevé.
+    best_ratio_idx = int(score_per_time.argmax())
+
     results = {
         "n_games": n_games,
         "avg_score": scores.mean(),
@@ -1029,6 +1035,9 @@ def evaluate(model_path, n_games=20, real_clock=False, out_dir="results", quiet=
         "best_score_time": times[best_idx],       # temps de CETTE partie-là
         "avg_time": times.mean(),
         "avg_score_per_time": score_per_time.mean(),
+        "best_score_per_time": score_per_time[best_ratio_idx],   # meilleur ratio sur 1 partie
+        "best_score_per_time_score": scores[best_ratio_idx],     # score de CETTE partie-là
+        "best_score_per_time_time": times[best_ratio_idx],       # temps de CETTE partie-là
         "pct_games_reaching_10": 100.0 * (scores >= 10).sum() / n_games,
         "avg_game_length_steps": lengths.mean(),
         "wins": wins,
@@ -1176,11 +1185,14 @@ def main():
         # Lancement sans argument : python snake-ia.py
         # -> entraîne (si besoin) puis fait jouer l'agent en temps réel,
         #    fenêtre ouverte, horloge officielle du jeu, SANS A* (final DQN only).
-        default_model = os.path.join("results", "astar_seed0.pth")
+        # Modèle standard = le même que celui chargé par serpent-algo.py
+        # (cf. STANDARD_MODEL_PATH dans ce fichier).
+        default_model = os.path.join("results_compare", "astar-shaped_seed100_ep600_best.pth")
         if not os.path.exists(default_model):
             print("Aucun modèle trouvé, entraînement rapide d'un agent A*-guidé...")
             cfg = DQNConfig(number_of_episodes=DQNConfig().number_of_episodes, seed=0)
             train("astar", cfg, seed=0)
+            default_model = os.path.join("results", f"astar-shaped_seed0_ep{cfg.number_of_episodes}_final.pth")
         print("Évaluation en temps réel (5 parties, fenêtre pygame, DQN seul)...")
         evaluate(default_model, n_games=5, real_clock=True)
 
