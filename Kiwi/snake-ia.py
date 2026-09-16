@@ -1,6 +1,10 @@
+import argparse
+import json
+import os
 import pygame
 import random
 import time
+from collections import defaultdict, deque
 
 # --- CONSTANTES DE JEU ---
 # Taille de la grille (20x20)
@@ -29,6 +33,38 @@ UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+
+# --- CONSTANTES DE L'AGENT (Q-LEARNING) ---
+# Actions relatives à la direction courante : jamais de demi-tour possible
+STRAIGHT, TURN_RIGHT, TURN_LEFT = 0, 1, 2
+ACTIONS = (STRAIGHT, TURN_RIGHT, TURN_LEFT)
+
+# Niveaux de sécurité d'un coup (voir evaluate_move)
+DEAD, TRAPPED, ROOMY, TAIL_REACHABLE = 0, 1, 2, 3
+
+# Récompenses
+REWARD_FOOD = 10.0
+REWARD_DEATH = -100.0
+REWARD_VICTORY = 100.0
+REWARD_STEP = -0.01
+REWARD_CLOSER = 1.0  # bonus (malus) quand le coup suit (ne suit pas) le plus court chemin vers la pomme
+
+# Hyperparamètres
+ALPHA = 0.1          # taux d'apprentissage
+GAMMA = 0.95         # importance du futur
+EPSILON_START = 1.0  # exploration initiale
+EPSILON_MIN = 0.001  # exploration finale
+TRAIN_EPISODES = 300
+EXPLORATION_SHARE = 0.6  # part de l'entraînement pendant laquelle epsilon décroît
+CHECKPOINT_EVERY = 20    # après l'exploration, évalue l'agent toutes les N parties...
+CHECKPOINT_GAMES = 10    # ...sur ce nombre de parties, et garde la meilleure Q-table
+
+# Nombre de coups sans pomme avant de considérer que l'agent tourne en rond
+STARVATION_LIMIT = GRID_SIZE * GRID_SIZE * 2
+# Délai avant de relancer automatiquement une partie terminée (secondes)
+AUTO_RESTART_DELAY = 3
+
+Q_TABLE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "q_table.json")
 
 # --- CLASSES DU JEU ---
 
@@ -181,98 +217,352 @@ def display_message(surface, font, message, color=BLANC, y_offset=0):
     pygame.draw.rect(surface, BLANC, bg_rect, 2, border_radius=10)
     surface.blit(text_surface, rect)
 
+# --- LOGIQUE D'UN TOUR DE JEU ---
+
+def game_step(snake, apple):
+    """
+    Exécute un tour de jeu, avec exactement la logique de la boucle principale
+    d'origine. Partagée par l'affichage et l'entraînement pour que l'agent
+    apprenne sur les mêmes règles que celles du jeu affiché.
+    Retourne (game_over, victory, ate).
+    """
+    snake.move()
+
+    # Vérification des collisions (murs et corps)
+    if snake.is_game_over():
+        return True, False, False
+
+    # Vérification de la pomme mangée
+    if snake.head_pos == list(apple.position):
+        snake.grow()
+        # Tente de replacer la pomme, Victoire si plus aucune case libre
+        if not apple.relocate(snake.body):
+            return True, True, True
+        return False, False, True
+
+    return False, False, False
+
+# --- PERCEPTION DE L'AGENT ---
+
+def turn(direction, action):
+    """Direction absolue obtenue en appliquant une action relative."""
+    dx, dy = direction
+    if action == TURN_RIGHT:
+        return (-dy, dx)  # sens horaire (l'axe y pointe vers le bas)
+    if action == TURN_LEFT:
+        return (dy, -dx)
+    return direction
+
+def clone_snake(snake):
+    """Copie indépendante du serpent, pour simuler un coup sans toucher au vrai."""
+    clone = Snake.__new__(Snake)
+    clone.body = [segment[:] for segment in snake.body]
+    clone.head_pos = clone.body[0]
+    clone.direction = snake.direction
+    clone.grow_pending = snake.grow_pending
+    clone.score = snake.score
+    return clone
+
+def bfs(start, blocked):
+    """Distances depuis start vers toutes les cases atteignables (grille torique)."""
+    distances = {start: 0}
+    queue = deque([start])
+    while queue:
+        x, y = queue.popleft()
+        next_distance = distances[(x, y)] + 1
+        for cell in (((x + 1) % GRID_SIZE, y), ((x - 1) % GRID_SIZE, y),
+                     (x, (y + 1) % GRID_SIZE), (x, (y - 1) % GRID_SIZE)):
+            if cell not in blocked and cell not in distances:
+                distances[cell] = next_distance
+                queue.append(cell)
+    return distances
+
+def evaluate_move(snake, direction, apple_pos):
+    """
+    Simule un coup avec les vraies méthodes de Snake et retourne
+    (niveau de sécurité, distance à la pomme après le coup ou None,
+    nombre de cases voisines de la nouvelle tête occupées par le corps).
+    """
+    clone = clone_snake(snake)
+    clone.set_direction(direction)
+    clone.move()
+    if clone.is_game_over():
+        return DEAD, None, 0
+
+    head = tuple(clone.head_pos)
+    tail = tuple(clone.body[-1])
+    # Si le coup mange la pomme, la queue restera en place au tour suivant
+    growing = head == apple_pos
+    # La queue n'est pas un obstacle : elle avance en même temps que la tête
+    blocked = {tuple(segment) for segment in clone.body[1:-1]}
+    distances = bfs(head, blocked)
+
+    tail_distance = distances.get(tail)
+    if tail_distance is not None and (not growing or tail_distance > 1):
+        # La tête peut toujours suivre sa queue : on ne peut pas s'enfermer
+        safety = TAIL_REACHABLE
+    elif len(distances) >= len(clone.body):
+        # Queue inaccessible, mais assez de place pour tout le corps
+        safety = ROOMY
+    else:
+        # Zone plus petite que le serpent : mort quasi certaine
+        safety = TRAPPED
+
+    # Contact : plus il est élevé, plus le serpent reste compact et laisse de la place libre
+    x, y = head
+    body = {tuple(segment) for segment in clone.body[1:]}
+    contact = sum(cell in body for cell in (((x + 1) % GRID_SIZE, y), ((x - 1) % GRID_SIZE, y),
+                                            (x, (y + 1) % GRID_SIZE), (x, (y - 1) % GRID_SIZE)))
+    return safety, distances.get(apple_pos), contact
+
+def perceive(snake, apple):
+    """
+    État vu par l'agent : pour chacune des 3 actions, un triplet
+    (niveau de sécurité, 1 si l'action suit le plus court chemin vers la pomme, contact).
+    """
+    apple_pos = tuple(apple.position)
+    moves = [evaluate_move(snake, turn(snake.direction, action), apple_pos) for action in ACTIONS]
+    reachable = [distance for safety, distance, _ in moves if safety != DEAD and distance is not None]
+    best = min(reachable, default=None)
+    return tuple((safety, int(safety != DEAD and distance is not None and distance == best), contact)
+                 for safety, distance, contact in moves)
+
+# --- AGENT Q-LEARNING ---
+
+class QAgent:
+    """
+    Agent de Q-Learning. Q(état, action) = q[caractéristiques de l'action] :
+    la valeur est partagée entre toutes les situations où un coup a les mêmes
+    caractéristiques, ce qui généralise aux états rares de fin de partie.
+    """
+    def __init__(self, epsilon=0.0):
+        self.q = defaultdict(float)
+        self.epsilon = epsilon
+
+    def values(self, state):
+        return [self.q[state[action]] for action in ACTIONS]
+
+    def choose(self, state):
+        """Politique epsilon-greedy : explore au hasard, sinon prend la meilleure action."""
+        if random.random() < self.epsilon:
+            return random.choice(ACTIONS)
+        values = self.values(state)
+        best = max(values)
+        return random.choice([action for action in ACTIONS if values[action] == best])
+
+    def act(self, state, stuck):
+        """Choix en partie réelle. Si l'agent tourne en rond, il varie parmi les coups les plus sûrs."""
+        if stuck:
+            safest = max(features[0] for features in state)
+            return random.choice([action for action in ACTIONS if state[action][0] == safest])
+        return self.choose(state)
+
+    def learn(self, state, action, reward, next_state):
+        """Équation de Bellman : Q(s,a) += alpha * (r + gamma * max Q(s',a') - Q(s,a))."""
+        target = reward if next_state is None else reward + GAMMA * max(self.values(next_state))
+        features = state[action]
+        self.q[features] += ALPHA * (target - self.q[features])
+
+    def save(self, path):
+        # Clé lisible "sécurité,pomme,contact" -> valeur Q
+        with open(path, "w") as f:
+            json.dump({",".join(map(str, features)): value for features, value in sorted(self.q.items())},
+                      f, indent=1)
+
+    def load(self, path):
+        """Charge une Q-table. Retourne False si le fichier est illisible ou d'un ancien format."""
+        try:
+            with open(path) as f:
+                table = {tuple(int(part) for part in key.split(",")): float(value)
+                         for key, value in json.load(f).items()}
+        except (OSError, ValueError, TypeError, AttributeError):
+            return False
+        if any(len(features) != 3 for features in table):
+            return False
+        self.q.update(table)
+        return True
+
+# --- ENTRAÎNEMENT ET ÉVALUATION (sans affichage) ---
+
+def play_episode(agent, learn):
+    """Joue une partie complète sans affichage. Retourne (score, victoire, nombre de coups)."""
+    snake = Snake()
+    apple = Apple(snake.body)
+    state = perceive(snake, apple)
+    steps_since_food = 0
+    steps = 0
+
+    while True:
+        stuck = steps_since_food > STARVATION_LIMIT
+        action = agent.choose(state) if learn else agent.act(state, stuck)
+        snake.set_direction(turn(snake.direction, action))
+        game_over, victory, ate = game_step(snake, apple)
+        steps += 1
+        steps_since_food = 0 if ate else steps_since_food + 1
+        # À l'entraînement, tourner en rond trop longtemps compte comme un échec
+        starved = learn and steps_since_food > STARVATION_LIMIT
+
+        if victory:
+            reward = REWARD_VICTORY
+        elif game_over or starved:
+            reward = REWARD_DEATH
+        elif ate:
+            reward = REWARD_FOOD
+        else:
+            reward = REWARD_STEP + (REWARD_CLOSER if state[action][1] else -REWARD_CLOSER)
+
+        done = game_over or starved or steps_since_food > 10 * STARVATION_LIMIT
+        next_state = None if (game_over or starved) else perceive(snake, apple)
+        if learn:
+            agent.learn(state, action, reward, next_state)
+        if done:
+            return snake.score, victory, steps
+        state = next_state
+
+def format_duration(seconds):
+    """Durée au format MM:SS, comme le chronomètre du jeu."""
+    return f"{int(seconds // 60):02d}:{int(seconds % 60):02d}"
+
+def train(agent, episodes):
+    """Entraîne l'agent sur plusieurs parties, avec une exploration décroissante."""
+    print(f"Entraînement sur {episodes} parties...")
+    train_start = time.time()
+    best = 0
+    recent = deque(maxlen=20)
+    best_checkpoint = None
+    best_q = None
+    exploration_end = int(episodes * EXPLORATION_SHARE)
+    for episode in range(1, episodes + 1):
+        # Décroissance linéaire de l'exploration sur le début de l'entraînement
+        progress = min(1.0, episode / max(1, exploration_end))
+        agent.epsilon = max(EPSILON_MIN, EPSILON_START * (1 - progress))
+        score, _, steps = play_episode(agent, learn=True)
+        best = max(best, score)
+        recent.append(score)
+        # Temps de la partie tel que l'afficherait le jeu (un coup par image à GAME_SPEED)
+        print(f"  partie {episode:4d} | score {score:3d} | temps de partie {format_duration(steps / GAME_SPEED)} | "
+              f"epsilon {agent.epsilon:.3f} | moyenne(20) {sum(recent) / len(recent):6.1f} | meilleur {best}")
+
+        # Point de contrôle : l'apprentissage est bruité, on garde la meilleure politique vue
+        if episode >= exploration_end and (episode % CHECKPOINT_EVERY == 0 or episode == episodes):
+            epsilon = agent.epsilon
+            agent.epsilon = 0.0
+            scores = [play_episode(agent, learn=False)[0] for _ in range(CHECKPOINT_GAMES)]
+            agent.epsilon = epsilon
+            mean = sum(scores) / len(scores)
+            improved = best_checkpoint is None or mean > best_checkpoint
+            print(f"  point de contrôle : moyenne {mean:.1f} sur {CHECKPOINT_GAMES} parties"
+                  f"{' -> meilleure Q-table conservée' if improved else ''}")
+            if improved:
+                best_checkpoint = mean
+                best_q = dict(agent.q)
+
+    if best_q is not None:
+        agent.q = defaultdict(float, best_q)
+        print(f"Q-table retenue : moyenne {best_checkpoint:.1f} au point de contrôle")
+    agent.epsilon = 0.0
+    print(f"Entraînement terminé en {format_duration(time.time() - train_start)}")
+
+def evaluate(agent, games):
+    """Mesure les performances de la politique apprise (sans exploration)."""
+    agent.epsilon = 0.0
+    scores = []
+    victories = 0
+    for game in range(1, games + 1):
+        score, victory, steps = play_episode(agent, learn=False)
+        scores.append(score)
+        victories += victory
+        print(f"  partie {game:3d} | score {score:3d} | temps de partie {format_duration(steps / GAME_SPEED)}"
+              f"{' (VICTOIRE)' if victory else ''}")
+    print(f"Moyenne {sum(scores) / len(scores):.1f} | min {min(scores)} | "
+          f"max {max(scores)} | victoires {victories}/{games}")
+
 # --- BOUCLE PRINCIPALE DU JEU ---
 
-def main():
-    """Fonction principale pour exécuter le jeu Snake Classique."""
+def main(agent, speed=1.0):
+    """Fonction principale : le jeu Snake Classique, joué par l'agent."""
     pygame.init()
-    
+
     # Configuration de l'écran
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Snake Classique - Socle de Base")
+    pygame.display.set_caption("Snake IA - Q-Learning")
     clock = pygame.time.Clock()
-    
+
     # Configuration des polices
     font_main = pygame.font.Font(None, 40)
     font_game_over = pygame.font.Font(None, 80)
-    
+
     # Initialisation des objets du jeu
     snake = Snake()
     apple = Apple(snake.body)
-    
+
     # Variables de jeu
     running = True
     game_over = False
     victory = False
-    
-    # Démarrage du chronomètre
-    start_time = time.time()
-    
+    steps_since_food = 0
+
+    # Chronomètre en temps de jeu : il avance d'un coup par image, comme le serpent,
+    # donc il accélère exactement comme lui avec --speed
+    frame_count = 0
+    game_over_frame = None
+
     # Variable pour la gestion de la vitesse (pour ne bouger qu'une fois par tic)
     move_counter = 0
 
     # --- Boucle de jeu ---
     while running:
-        # 1. Gestion des Événements (Contrôles Clavier)
+        # 1. Gestion des Événements (fermeture et redémarrage uniquement)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            
-            if event.type == pygame.KEYDOWN:
-                if game_over:
-                    # Logique de redémarrage : seulement si le jeu est terminé
-                    if event.key == pygame.K_SPACE:
-                        main() # Redémarre le jeu en appelant main()
-                        return
-                else:
-                    # Logique de déplacement : seulement si le jeu est en cours
-                    if event.key == pygame.K_UP:
-                        snake.set_direction(UP)
-                    elif event.key == pygame.K_DOWN:
-                        snake.set_direction(DOWN)
-                    elif event.key == pygame.K_LEFT:
-                        snake.set_direction(LEFT)
-                    elif event.key == pygame.K_RIGHT:
-                        snake.set_direction(RIGHT)
-        
+
+            if event.type == pygame.KEYDOWN and game_over and event.key == pygame.K_SPACE:
+                main(agent, speed) # Redémarre le jeu en appelant main()
+                return
+
+        # Redémarrage automatique après quelques secondes (de temps de jeu)
+        if game_over and frame_count - game_over_frame >= AUTO_RESTART_DELAY * GAME_SPEED:
+            main(agent, speed)
+            return
+
         # 2. Logique de Mise à Jour du Jeu
         if not game_over and not victory:
             # Le serpent se déplace à la vitesse définie
             move_counter += 1
             if move_counter >= GAME_SPEED // 10: # Déplace le serpent à un rythme constant
-                snake.move()
+                # L'agent choisit la direction à la place du clavier
+                state = perceive(snake, apple)
+                action = agent.act(state, stuck=steps_since_food > STARVATION_LIMIT)
+                snake.set_direction(turn(snake.direction, action))
+
+                game_over, victory, ate = game_step(snake, apple)
                 move_counter = 0
+                steps_since_food = 0 if ate else steps_since_food + 1
 
-                # Vérification des collisions (murs et corps)
-                if snake.is_game_over():
-                    game_over = True
-                    continue # Passe à l'affichage de Game Over
+                if game_over:
+                    game_over_frame = frame_count
+                    print(f"Partie terminée : score {snake.score}{' (VICTOIRE)' if victory else ''}")
+                    if not victory:
+                        continue # Passe à l'affichage de Game Over
 
-                # Vérification de la pomme mangée
-                if snake.head_pos == list(apple.position):
-                    snake.grow()
-                    
-                    # Tente de replacer la pomme, vérifie la Victoire si échec
-                    if not apple.relocate(snake.body):
-                        victory = True # Plus d'espace pour la pomme
-                        game_over = True # Met fin au jeu
-        
         # 3. Dessin
         screen.fill(GRIS_FOND) # Fond gris pour la zone de score
-        
+
         # Zone de jeu (décalée par la hauteur du panneau de score)
         game_area_rect = pygame.Rect(0, SCORE_PANEL_HEIGHT, SCREEN_WIDTH, SCREEN_WIDTH)
         pygame.draw.rect(screen, NOIR, game_area_rect)
-        
+
         draw_grid(screen)
-        
+
         # Dessine la pomme et le serpent
         apple.draw(screen)
         snake.draw(screen)
-        
-        # Affiche le score et le temps
+
+        # Affiche le score et le temps (display_info mesure time.time() - start_time)
+        start_time = time.time() - frame_count / GAME_SPEED
         display_info(screen, font_main, snake, start_time)
-        
+
         # Affichage des messages de fin de jeu
         if game_over:
             if victory:
@@ -280,21 +570,50 @@ def main():
                 display_message(screen, font_game_over, "VICTOIRE !", VERT)
                 message_details = "ESPACE pour rejouer."
                 # Le deuxième message est décalé vers le bas
-                display_message(screen, font_main, message_details, BLANC, y_offset=100) 
+                display_message(screen, font_main, message_details, BLANC, y_offset=100)
             else:
                 # Le premier message est centré (y_offset=0 par défaut)
                 display_message(screen, font_game_over, "GAME OVER", ROUGE)
                 message_details = "ESPACE pour rejouer."
                 # Le deuxième message est décalé vers le bas
                 display_message(screen, font_main, message_details, BLANC, y_offset=100)
-        
+
         # Mise à jour de l'affichage
         pygame.display.flip()
-        
+
         # Contrôle la vitesse du jeu
-        clock.tick(GAME_SPEED)
+        clock.tick(GAME_SPEED * speed)
+        frame_count += 1
 
     pygame.quit()
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Snake joué par un agent de Q-Learning.")
+    parser.add_argument("--train", type=int, metavar="N",
+                        help="réentraîne l'agent sur N parties (sinon charge q_table.json s'il existe)")
+    parser.add_argument("--eval", type=int, metavar="N",
+                        help="évalue l'agent sur N parties sans affichage, puis quitte")
+    parser.add_argument("--speed", type=float, default=1.0,
+                        help="multiplie la vitesse du serpent et du chronomètre (ex: --speed 10)")
+    args = parser.parse_args()
+
+    agent = QAgent()
+    if args.speed <= 0:
+        parser.error("--speed doit être strictement positif")
+
+    loaded = False
+    if args.train is None and os.path.exists(Q_TABLE_PATH):
+        loaded = agent.load(Q_TABLE_PATH)
+        if loaded:
+            print(f"Q-table chargée depuis {Q_TABLE_PATH}")
+        else:
+            print(f"{Q_TABLE_PATH} est d'un format incompatible : nouvel entraînement.")
+    if not loaded:
+        train(agent, args.train or TRAIN_EPISODES)
+        agent.save(Q_TABLE_PATH)
+        print(f"Q-table sauvegardée dans {Q_TABLE_PATH}")
+
+    if args.eval:
+        evaluate(agent, args.eval)
+    else:
+        main(agent, args.speed)
