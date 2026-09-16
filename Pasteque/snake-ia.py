@@ -209,10 +209,23 @@ def main():
     args = parser.parse_args()
 
     if not getattr(args, "command", None):
-        parser.print_help()
+        # Sans argument : lance directement le jeu joue par l'IA (clock de base du
+        # socle, parties en boucle jusqu'a fermeture de la fenetre).
+        launch_game()
         return
 
     args.func(args)
+
+
+def launch_game():
+    """Lance le jeu avec le meilleur modele entraine (mode par defaut sans argument)."""
+    model_path = os.path.join(_default_results_dir(), "best_model.pth")
+    if not os.path.exists(model_path):
+        print(f"Aucun modele trouve ({model_path}).")
+        print("Entrainez d'abord l'agent : python snake-ia.py train")
+        sys.exit(1)
+    print(f"Modele : {model_path} | fermez la fenetre pour quitter.")
+    play(model_path=model_path, n_games=None, render=True)
 
 
 if __name__ == "__main__":

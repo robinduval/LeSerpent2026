@@ -21,6 +21,7 @@ last_model.pth, victory_model.pth, training_plot.png.
 """
 
 import csv
+import itertools
 import json
 import os
 import random
@@ -595,7 +596,10 @@ def play(model_path, n_games=5, render=True):
     agent.load(model_path)
 
     results = []
-    for i in range(n_games):
+    # n_games=None : parties en boucle jusqu'a fermeture de la fenetre (lancement manuel).
+    parties = range(n_games) if n_games is not None else itertools.count()
+    total_txt = str(n_games) if n_games is not None else "inf"
+    for i in parties:
         state = env.reset()
         done = False
         info = {}
@@ -618,7 +622,7 @@ def play(model_path, n_games=5, render=True):
         }
         results.append(result)
         print(
-            f"Partie {i + 1}/{n_games} | score={result['score']} | steps={result['steps']} | "
+            f"Partie {i + 1}/{total_txt} | score={result['score']} | steps={result['steps']} | "
             f"time_s={result['time_s']:.2f} | ratio={result['ratio']:.3f} | won={result['won']}"
         )
 
