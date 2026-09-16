@@ -38,3 +38,20 @@ Exemple :
 20:38 : Constatation : 19 tests PER passent, dont la propriete centrale mesuree et non supposee, la transition d'erreur TD 100 est rejouee plus de 4 fois la mediane.
 20:40 : Reponse : smoke test dueling_ddqn_per sur 200 episodes, evaluation moyenne 11.10, mediane 11.0, record 23, aucune troncature.
 20:42 : Hypothese : le 1.0 episode/s mesure n'est pas un cout du PER mais la concurrence des 4 trials de la campagne sur les memes coeurs, a reverifier machine libre.
+20:46 : Activité : inspection Git et lecture complète du cadrage, SESSION_HANDOFF.md absent ; quatre essais de grid search orphelins encore actifs sont identifiés et arrêtés.
+20:47 : Constatation : le modulo du professeur définit un plateau torique ; l'interprétation des murs mortels et le benchmark de 1990 morts murales sont invalides.
+20:48 : Réponse : déplacement et trois dangers corrigés avec modulo, suppression de la mort murale, masque du seul demi-tour et récompenses conservés.
+20:49 : Activité : ajout de tests de wraparound et de provenance torique ; anciens poids et résultats exclus du classement, rapports E00 et E01 marqués legacy invalides.
+20:50 : Constatation : benchmark aléatoire de 2000 parties sans limite, zéro mort murale et 2000 auto-collisions, 568,9745 pas moyens et maximum 2994 ; même seed reproductible et seed différent donnant une autre trajectoire.
+20:52 : Réponse : 184 tests passent, déplacements RL conformes au socle sur 900 cas, git diff vérifié et rapport de validation enregistré ; aucune longue grid search relancée.
+20:56 : Constatation : la limite expérimentale compte 500 pas consécutifs sans pomme et conserve déjà le bootstrap ; les flags de fin et les replays doivent distinguer terminated et truncated explicitement.
+20:58 : Réponse : flags séparés, troncature sans mort ni reward de mort, limite zéro réellement désactivée ; ajout de métriques de pommes, Q, loss et stagnation analytique sans nouvelle règle terminale.
+20:58 : Activité : lancement DQN seul sur trois seeds, 120 épisodes par seed, évaluations greedy tous les 40 épisodes, configuration courte fixe et reward du cours inchangé.
+21:00 : Constatation : les 60 évaluations finales donnent un score moyen de 28,90, médiane 25,5, record 56, zéro troncature et maximum 75 pas sans pomme ; les politiques initiales étaient toutes tronquées.
+21:01 : Activité : trois replays intermédiaires de cycles de 15 pas sont reproduits action par action, sans collision finale ; campagne totale de 105,38 secondes, dont 77,64 secondes dans les épisodes d'entraînement.
+21:03 : Réponse : 223 tests passent, rapports et options expérimentales enregistrés ; la baseline apprend la recherche des pommes sur cet échantillon, aucun reward changé et aucune longue grid search relancée.
+21:07 : Constatation : le JSON désactive le replay graphique et le CLI conservait ce flag sans --window ; l'évaluation tournait correctement mais aucun renderer n'était appelé.
+21:08 : Réponse : replay automatique activé sauf --no-window, annonce terminal et cadence visuelle de 60 FPS configurable ; capture de la meilleure trajectoire dès la mesure, sans refaire jouer le modèle.
+21:09 : Activité : smoke réel de quatre épisodes, fenêtres WSLg/X11 ouvertes après les évaluations 2 et 4, chacune 501 frames lues, fermeture automatique et reprise du training ; fenêtre visible confirmée par xwininfo.
+21:10 : Activité : contrôle --no-window réussi avec un pilote graphique volontairement inexistant, aucun display créé ; paramètres DQN, règles et récompenses inchangés.
+21:12 : Réponse : 236 tests passent, dont les régressions de branchement et de cadence graphique ; rapport de validation et git diff vérifiés, sorties des smoke tests conservées sans écrasement.
