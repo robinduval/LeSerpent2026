@@ -1,0 +1,8 @@
+{
+  "source": "runs/20260916-210749-367597-train/latest.pt",
+  "features": "spatial",
+  "training_steps": 1389244,
+  "sha256": "5205f680e53ecdc3ce26e6f54e9a85cbb33eecc63b78db2110af8211e2813f28",
+  "evaluation_clock_hz": 5,
+  "selection_note": "Checkpoint spatial ayant atteint 82 points lors de la partie interrompue seed 1000 ; score non homologu\u00e9 comme partie termin\u00e9e."
+}

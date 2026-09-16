@@ -1,0 +1,27 @@
+{
+  "purpose": "matched-state functional causality test, no official 5Hz time claim",
+  "checkpoint": "runs/hybrid_rewired/candidate_000100000.pt",
+  "sha256": "a67f21cf5a4c213ac4e20352c3aefbfe0224a7375174fa0ec5f0df8c53d6e933",
+  "seed": 43731,
+  "same_features_and_mask": true,
+  "config": {
+    "hidden": 64,
+    "gamma": 0.97,
+    "lr": 0.001,
+    "batch_size": 128,
+    "capacity": 40000,
+    "move_reward": -0.05,
+    "seed": 731,
+    "encoder": "cycle_action20",
+    "shield": "rewired-cycle-v1",
+    "optimize_free_arc": false,
+    "explore_attempts": 0
+  },
+  "counts": {
+    "states": 7649,
+    "multiple_safe_actions": 342,
+    "trained_vs_untrained_changed": 149,
+    "trained_vs_zero_changed": 196
+  },
+  "completion_invariant": true
+}

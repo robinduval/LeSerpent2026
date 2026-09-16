@@ -1,0 +1,66 @@
+{
+  "episodes": 3,
+  "score_mean": 142.33333333333334,
+  "score_median": 153,
+  "score_max": 171,
+  "score_min": 103,
+  "score_std": 28.767265347188555,
+  "completed": 0,
+  "completion_rate": 0.0,
+  "collision_rate": 0.6666666666666666,
+  "external_cutoffs": 1,
+  "target_223_rate": 0.0,
+  "terminal_time_mean_by_exact_score": {
+    "153": 745.4651000499725,
+    "103": 281.18836188316345
+  },
+  "terminal_time_count_by_exact_score": {
+    "153": 1,
+    "103": 1
+  },
+  "qualification": "Two collisions and one externally truncated game; zero completed games. Training completions are not official evaluation completions.",
+  "offline_reconstruction": [
+    {
+      "kind": "offline_log_reconstruction",
+      "seed": 880001,
+      "steps_verified": 3659,
+      "all_actions_match": true,
+      "all_scores_match": true,
+      "filter_overrides": 1446,
+      "learned_choice_states": 2870,
+      "final_score_from_recorded_trace": 153,
+      "recorded_time_seconds": 745.4651000499725,
+      "terminal_from_reconstructed_recorded_actions": true,
+      "source_trace_sha256": "1c56e5478448d9c1fc2d0e0db2c45a40587a987018e53943bf1f1040f9796e2a",
+      "checkpoint_sha256": "c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c"
+    },
+    {
+      "kind": "offline_log_reconstruction",
+      "seed": 880002,
+      "steps_verified": 4500,
+      "all_actions_match": true,
+      "all_scores_match": true,
+      "filter_overrides": 1862,
+      "learned_choice_states": 3365,
+      "final_score_from_recorded_trace": 171,
+      "recorded_time_seconds": 916.5187470912933,
+      "terminal_from_reconstructed_recorded_actions": false,
+      "source_trace_sha256": "c28c049afd77124c943eeeb44dcdd34ea0a954cf5808e276cf36a29482ab3d88",
+      "checkpoint_sha256": "c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c"
+    },
+    {
+      "kind": "offline_log_reconstruction",
+      "seed": 880003,
+      "steps_verified": 1380,
+      "all_actions_match": true,
+      "all_scores_match": true,
+      "filter_overrides": 277,
+      "learned_choice_states": 1237,
+      "final_score_from_recorded_trace": 103,
+      "recorded_time_seconds": 281.18836188316345,
+      "terminal_from_reconstructed_recorded_actions": true,
+      "source_trace_sha256": "4786777630d41015fe7d2cb53fb8219ed629067f89b52f3daeebfec5bca347cd",
+      "checkpoint_sha256": "c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+Loaded candidate_001000000:19efc3f0b77b: 1000000 training transitions; CPU, evaluation only, 5 Hz.
+{"model_id": "candidate_001000000:19efc3f0b77b", "configuration_id": "ordered_1m_seed17", "seed": 17, "official_score": 0, "official_time_seconds": 1.6079421043395996, "rl_return": -0.16, "apples": 0, "steps": 8, "completed": false, "termination_reason": "user_quit", "final_length": 3, "clock_hz": 5, "decision_latency": 0.00018573450029180094, "training_transitions": 1000000, "training_updates": 249751, "training_wall_time": 160.6169777920004, "demonstration_cost": 0, "simulation_cost": 0, "time_convention": "wall time at terminal event or user quit; display continues afterward"}
+Window closed cleanly; checkpoint unchanged.

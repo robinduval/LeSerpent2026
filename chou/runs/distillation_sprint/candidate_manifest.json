@@ -1,0 +1,22 @@
+{
+  "checkpoint_sha256": "a8593676ed83678e016e23bb36bbc270e041e44f21c3e32062ebf516a199d12c",
+  "policy": "pure learned network; no inference filter, teacher or planning",
+  "training_method": "DQfD-inspired TD plus large-margin demonstrations",
+  "teacher": "frozen tail2 hybrid c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c",
+  "training_transitions": 1200188,
+  "rl_training_updates": 262200,
+  "additional_transitions": 200188,
+  "additional_rl_updates": 12449,
+  "additional_imitation_updates": 50016,
+  "additional_training_wall_seconds": 57.546195875000194,
+  "training_episode_count": 227,
+  "demonstration_observations": 200188,
+  "training_score_mean": 73.90308370044053,
+  "training_score_max": 127,
+  "qualification": "3 frozen 5Hz validation episodes, all collisions:58,60,76",
+  "limitations": [
+    "Inherited metadata training counters are stale; serialized agent counters and this manifest are authoritative.",
+    "These validation seeds are also used for the original and unfiltered-tail2 candidates; not a heldout final test.",
+    "Demonstrations include 15 percent student-selected actions during data collection."
+  ]
+}
