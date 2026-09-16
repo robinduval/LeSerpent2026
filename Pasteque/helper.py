@@ -401,6 +401,145 @@ def summarize(csv_path, print_report: bool = True) -> dict:
     return report
 
 
+def compare_runs(csv_paths, labels=None, window=50, png_path=None, print_report=True) -> list[dict]:
+    """Compare plusieurs runs d'entraînement (training_log.csv) : tableau + graphe optionnel.
+
+    Utile pour évaluer l'effet des optimisations (train_every, n-step, Polyak, lr scheduler)
+    en comparant un nouveau run à un run de référence, sans avoir à ouvrir chaque CSV/plot
+    séparément. Charge chaque CSV via load_log (interface figée), calcule pour chacun :
+    record, épisode du record, meilleur ratio, score/ratio moyens sur les `window` dernières
+    parties, nombre de victoires et temps mur total. Si print_report, imprime un tableau
+    comparatif en français. Si png_path est fourni, trace sur une même figure (2 sous-graphes :
+    score et ratio en moyenne mobile) une courbe par run, légendée par label.
+
+    Args:
+        csv_paths: list[str], chemins des training_log.csv à comparer.
+        labels: list[str] optionnel, un nom par run (défaut : nom du dossier parent du CSV).
+        window: Taille de la moyenne mobile (défaut 50), réutilise moving_average.
+        png_path: Chemin de sortie du PNG comparatif (défaut None = pas de graphe généré).
+        print_report: Si True, imprime le tableau comparatif (défaut True).
+
+    Returns:
+        list[dict]: Une entrée par run avec les clés : label, n_episodes, best_score,
+            best_score_episode, best_ratio, mean_score_last_window, mean_ratio_last_window,
+            n_won, wall_time_total_s.
+    """
+    if labels is None:
+        labels = []
+        for path in csv_paths:
+            parent_name = os.path.basename(os.path.dirname(os.path.abspath(path)))
+            labels.append(parent_name if parent_name else os.path.basename(path))
+    if len(labels) != len(csv_paths):
+        raise ValueError("labels doit avoir la meme longueur que csv_paths")
+
+    reports = []
+    all_data = []
+    for path, label in zip(csv_paths, labels):
+        data = load_log(path)
+        all_data.append(data)
+        n = len(data.get("episode", np.array([])))
+
+        if n == 0:
+            reports.append({
+                "label": label,
+                "n_episodes": 0,
+                "best_score": 0,
+                "best_score_episode": None,
+                "best_ratio": 0.0,
+                "mean_score_last_window": 0.0,
+                "mean_ratio_last_window": 0.0,
+                "n_won": 0,
+                "wall_time_total_s": 0.0,
+            })
+            continue
+
+        episodes = data["episode"]
+        scores = data["score"].astype(float)
+        ratios = data["ratio"].astype(float)
+        won = data.get("won", np.zeros(n, dtype=bool)).astype(bool)
+        wall_time_s = data.get("wall_time_s", np.zeros(n, dtype=float)).astype(float)
+
+        best_idx = int(np.argmax(scores))
+        best_ratio_idx = int(np.argmax(ratios))
+        last = min(window, n)
+
+        reports.append({
+            "label": label,
+            "n_episodes": n,
+            "best_score": float(scores[best_idx]),
+            "best_score_episode": int(episodes[best_idx]),
+            "best_ratio": float(ratios[best_ratio_idx]),
+            "mean_score_last_window": float(np.mean(scores[-last:])),
+            "mean_ratio_last_window": float(np.mean(ratios[-last:])),
+            "n_won": int(np.sum(won)),
+            "wall_time_total_s": float(np.sum(wall_time_s)),
+        })
+
+    if print_report:
+        columns = [
+            ("Run", "label", "<", 22, "s"),
+            ("Episodes", "n_episodes", ">", 9, "d"),
+            ("Record", "best_score", ">", 8, ".0f"),
+            ("Ep.record", "best_score_episode", ">", 10, "d"),
+            ("MeilleurRatio", "best_ratio", ">", 14, ".4f"),
+            (f"Score{window}", "mean_score_last_window", ">", 9, ".2f"),
+            (f"Ratio{window}", "mean_ratio_last_window", ">", 10, ".4f"),
+            ("Victoires", "n_won", ">", 10, "d"),
+            ("TempsMur(s)", "wall_time_total_s", ">", 12, ".1f"),
+        ]
+        header = "".join(f"{title:{align}{width}}" for title, _, align, width, _ in columns)
+        print(header)
+        print("-" * len(header))
+        for r in reports:
+            cells = []
+            for _, key, align, width, fmt in columns:
+                value = r[key]
+                if value is None:
+                    value = 0
+                cells.append(f"{value:{align}{width}{fmt}}")
+            print("".join(cells))
+
+    if png_path:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        parent = os.path.dirname(png_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+
+        fig, (ax_score, ax_ratio) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+        fig.suptitle("Comparaison de runs — Snake RL (D3QN + PER)")
+
+        for data, label in zip(all_data, labels):
+            n = len(data.get("episode", np.array([])))
+            if n == 0:
+                continue
+            episodes = data["episode"]
+            ma_score = moving_average(data["score"].astype(float), window=window)
+            ma_ratio = moving_average(data["ratio"].astype(float), window=window)
+            ax_score.plot(episodes, ma_score, linewidth=2.0, label=label)
+            ax_ratio.plot(episodes, ma_ratio, linewidth=2.0, label=label)
+
+        ax_score.set_ylabel("Score (moyenne mobile)")
+        ax_score.set_title(f"Score — moyenne mobile ({window})")
+        ax_score.grid(alpha=0.3)
+        ax_score.legend(loc="upper left")
+
+        ax_ratio.set_ylabel("Score/temps (moyenne mobile)")
+        ax_ratio.set_xlabel("Partie n°")
+        ax_ratio.set_title(f"Ratio score/temps — moyenne mobile ({window})")
+        ax_ratio.grid(alpha=0.3)
+        ax_ratio.legend(loc="upper left")
+
+        fig.tight_layout()
+        fig.savefig(png_path, dpi=120)
+        plt.close(fig)
+
+    return reports
+
+
 if __name__ == "__main__":
     rng = np.random.default_rng(42)
 
@@ -492,5 +631,35 @@ if __name__ == "__main__":
         assert empty_report["best_score"] == 0
         assert empty_report["n_won"] == 0
         print("OK: cas CSV vide géré sans erreur (load_log, plot_training, summarize).")
+
+        # --- Vérification de compare_runs (deux runs : le principal + un second synthétique) ---
+        csv_path_2 = os.path.join(tmp_dir, "training_2.csv")
+        with TrainingLogger(csv_path_2) as logger2:
+            for ep in range(1, 101):
+                score2 = max(0, int(round(min(20.0, ep / 100 * 20.0) + rng.normal(0, 2))))
+                steps2 = 50 + score2 * 20
+                time_s2 = steps2 / game_speed
+                ratio2 = score2 / time_s2 if time_s2 > 0 else 0.0
+                logger2.log(ep, score2, steps2, time_s2, ratio2, score2 * 10.0, 0.1, False, False, steps2 * 0.01)
+
+        compare_png = os.path.join(tmp_dir, "compare.png")
+        comparison = compare_runs(
+            [csv_path, csv_path_2], labels=["principal", "synthetique"],
+            window=50, png_path=compare_png, print_report=True,
+        )
+        assert len(comparison) == 2, "compare_runs doit retourner une entree par CSV."
+        assert comparison[0]["label"] == "principal" and comparison[1]["label"] == "synthetique"
+        assert comparison[0]["n_episodes"] == total_games
+        assert comparison[1]["n_episodes"] == 100
+        assert comparison[0]["best_score"] >= comparison[1]["best_score"], (
+            "Le run principal (victoire a score 224) doit avoir le meilleur record."
+        )
+        assert os.path.exists(compare_png) and os.path.getsize(compare_png) > 0, "Le PNG comparatif doit etre non vide."
+        print(f"OK: compare_runs — tableau + PNG generes ({os.path.getsize(compare_png)} octets).")
+
+        # --- compare_runs sans png_path (pas de graphe) ne doit pas planter ---
+        comparison_no_png = compare_runs([csv_path], print_report=False)
+        assert len(comparison_no_png) == 1
+        print("OK: compare_runs sans png_path fonctionne (labels par defaut, pas de graphe).")
 
         print("\nTous les tests sont passés avec succès.")

@@ -3,6 +3,13 @@
 Version proportionnelle basee sur un SumTree : la probabilite de tirage d'une
 transition est proportionnelle a sa priorite (|erreur TD| + eps) ** alpha.
 Implementation 100% numpy, sans dependance a torch.
+
+Optimisation : le SumTree expose des methodes vectorisees (`get_batch`,
+`update_batch`) qui traitent tout un lot en O(log capacity) iterations
+numpy au lieu d'une boucle Python de `batch_size` descentes/mises a jour.
+Le buffer stocke aussi les transitions dans des tableaux numpy prealloues
+(indexes par position circulaire) plutot que dans un tableau d'objets,
+pour eviter les copies element par element lors de `sample()`.
 """
 
 from __future__ import annotations
@@ -31,6 +38,7 @@ class SumTree:
         # Arbre complet : capacity-1 noeuds internes + capacity feuilles.
         self.tree = np.zeros(2 * self.capacity - 1, dtype=np.float64)
         # Donnees utilisateur associees a chaque feuille (memes indices que les feuilles, decales).
+        # Conserve pour compatibilite generique (SumTree utilise seul, hors PrioritizedReplayBuffer).
         self.data = np.empty(self.capacity, dtype=object)
         self.write = 0  # prochaine position d'ecriture (circulaire)
         self.count = 0  # nombre d'elements ecrits (sature a capacity)
@@ -98,6 +106,90 @@ class SumTree:
         data_idx = idx - (self.capacity - 1)
         return idx, self.tree[idx], self.data[data_idx]
 
+    def get_batch(self, values):
+        """Version vectorisée de `get()` pour un lot de valeurs.
+
+        Descend tout le lot simultanément niveau par niveau (au lieu de descendre
+        chaque valeur séparément) : à chaque niveau, on compare la valeur restante
+        au fils gauche pour tout le lot d'un coup avec numpy. Le nombre d'itérations
+        est borné par la profondeur de l'arbre (~log2(capacity)), et non par la
+        taille du lot. Les éléments ayant déjà atteint une feuille sont "gelés"
+        (via np.where) pendant que les autres continuent de descendre — nécessaire
+        car l'arbre n'est pas forcément parfaitement équilibré si `capacity` n'est
+        pas une puissance de 2.
+
+        Args:
+            values: array-like (B,), valeurs à chercher dans [0, total).
+
+        Returns:
+            (tree_indices, priorities) : deux np.ndarray (B,), indices de feuilles
+            (int64) et leurs priorités (float64).
+        """
+        values = np.array(values, dtype=np.float64, copy=True)
+        idx = np.zeros(values.shape[0], dtype=np.int64)
+        n_tree = len(self.tree)
+
+        while True:
+            left = 2 * idx + 1
+            is_leaf = left >= n_tree
+            if is_leaf.all():
+                break
+            # Clamp defensif des indices deja-feuilles pour rester dans les bornes
+            # (leur valeur ne sera de toute facon pas utilisee, cf. np.where ci-dessous).
+            left_c = np.minimum(left, n_tree - 1)
+            right_c = np.minimum(left_c + 1, n_tree - 1)
+
+            go_left = values <= self.tree[left_c]
+            new_idx = np.where(go_left, left_c, right_c)
+            new_values = np.where(go_left, values, values - self.tree[left_c])
+
+            idx = np.where(is_leaf, idx, new_idx)
+            values = np.where(is_leaf, values, new_values)
+
+        return idx, self.tree[idx]
+
+    def update_batch(self, tree_indices, priorities) -> None:
+        """Version vectorisée de `update()` pour un lot d'indices/priorités.
+
+        Écrit toutes les feuilles en une fois puis remonte vers la racine niveau
+        par niveau, en recalculant chaque nœud comme la somme de ses deux enfants
+        (plutôt que par delta) : cela reste correct même si un même indice de
+        feuille apparaît plusieurs fois dans le lot (une transition tirée deux
+        fois), auquel cas la dernière valeur du lot l'emporte. Les indices
+        parents sont dédupliqués (`np.unique`) à chaque niveau pour éviter les
+        écritures redondantes.
+
+        Args:
+            tree_indices: array-like (B,), indices de feuilles (comme rendus par `get`/`sample`).
+            priorities: array-like (B,), nouvelles priorités correspondantes.
+        """
+        tree_indices = np.asarray(tree_indices, dtype=np.int64)
+        priorities = np.asarray(priorities, dtype=np.float64)
+        if tree_indices.size == 0:
+            return
+
+        # Doublons dans le lot : la derniere occurrence de chaque indice gagne.
+        # (np.unique sur le tableau inverse => "premiere" occurrence inversee = derniere occurrence originale.)
+        reversed_idx = tree_indices[::-1]
+        _, first_pos_reversed = np.unique(reversed_idx, return_index=True)
+        orig_pos = tree_indices.size - 1 - first_pos_reversed
+        leaf_idx = tree_indices[orig_pos]
+        leaf_pri = priorities[orig_pos]
+
+        self.tree[leaf_idx] = leaf_pri
+
+        if len(self.tree) == 1:
+            return  # arbre a une seule feuille == racine, rien a propager
+
+        current = np.unique((leaf_idx - 1) // 2)
+        while True:
+            left = 2 * current + 1
+            right = 2 * current + 2
+            self.tree[current] = self.tree[left] + self.tree[right]
+            if current.size == 1 and current[0] == 0:
+                break
+            current = np.unique((current - 1) // 2)
+
     @property
     def total(self) -> float:
         """Retourne la somme totale des priorités (racine de l'arbre)."""
@@ -118,6 +210,11 @@ class PrioritizedReplayBuffer:
     corrigent le biais introduit par le sur-échantillonnage, avec un facteur
     de recuit beta croissant progressivement de beta_start vers 1.0 au fil de
     l'entraînement (pour passer progressivement d'un gradient biaisé à non-biaisé).
+
+    Les transitions sont stockées dans des tableaux numpy prealloues (states,
+    actions, rewards, next_states, dones), indexes par position circulaire
+    (identique a celle du SumTree sous-jacent). La dimension de l'etat est
+    deduite paresseusement du premier `add()`, pour rester generique.
     """
 
     def __init__(
@@ -146,6 +243,14 @@ class PrioritizedReplayBuffer:
         self.frame = 0  # compteur d'appels a sample(), pour le recuit de beta
         self.max_priority = 1.0  # priorite max vue jusqu'ici
 
+        # Stockage vectorise, alloue paresseusement au premier add() (dimension d'etat inconnue avant).
+        self.state_dim = None
+        self._states = None
+        self._actions = None
+        self._rewards = None
+        self._next_states = None
+        self._dones = None
+
     def _beta(self) -> float:
         """Retourne le facteur d'importance sampling actuel (recuit linéaire).
 
@@ -159,6 +264,15 @@ class PrioritizedReplayBuffer:
         """
         progress = min(1.0, self.frame / float(self.beta_frames))
         return self.beta_start + progress * (1.0 - self.beta_start)
+
+    def _allocate_storage(self, state_dim: int) -> None:
+        """Alloue les tableaux numpy de stockage (appelé une seule fois, au 1er add)."""
+        self.state_dim = state_dim
+        self._states = np.zeros((self.capacity, state_dim), dtype=np.float32)
+        self._actions = np.zeros(self.capacity, dtype=np.int64)
+        self._rewards = np.zeros(self.capacity, dtype=np.float32)
+        self._next_states = np.zeros((self.capacity, state_dim), dtype=np.float32)
+        self._dones = np.zeros(self.capacity, dtype=np.float32)
 
     def add(self, state, action, reward, next_state, done) -> None:
         """Ajoute une transition avec la priorité maximale observée.
@@ -174,14 +288,22 @@ class PrioritizedReplayBuffer:
             next_state: array-like (12,), observation suivante.
             done: bool, fin de l'épisode.
         """
-        transition = (
-            np.asarray(state, dtype=np.float32),
-            int(action),
-            float(reward),
-            np.asarray(next_state, dtype=np.float32),
-            float(done),
-        )
-        self.tree.add(self.max_priority, transition)
+        state_arr = np.asarray(state, dtype=np.float32)
+        next_state_arr = np.asarray(next_state, dtype=np.float32)
+
+        if self._states is None:
+            self._allocate_storage(state_arr.shape[0])
+
+        pos = self.tree.write  # position d'ecriture circulaire (avant increment par tree.add)
+        self._states[pos] = state_arr
+        self._actions[pos] = int(action)
+        self._rewards[pos] = float(reward)
+        self._next_states[pos] = next_state_arr
+        self._dones[pos] = float(done)
+
+        # La donnee du SumTree n'est plus utilisee (stockage vectorise ci-dessus) :
+        # on passe None pour eviter de dupliquer la transition dans un tableau d'objets.
+        self.tree.add(self.max_priority, None)
 
     def sample(self, batch_size: int):
         """Échantillonne un lot de transitions par stratification prioritaire.
@@ -189,7 +311,9 @@ class PrioritizedReplayBuffer:
         Divise l'intervalle [0, total) en batch_size segments égaux et tire une
         valeur uniforme dans chacun. Cela réduit la variance par rapport à un
         tirage uniforme direct dans [0, total), tout en respectant la distribution
-        de probabilité des priorités.
+        de probabilité des priorités. La descente dans le SumTree et la lecture
+        des transitions se font en une seule passe vectorisée (numpy) plutôt
+        qu'en boucle Python.
 
         Args:
             batch_size: int, nombre de transitions à retourner.
@@ -205,39 +329,34 @@ class PrioritizedReplayBuffer:
                 - is_weights: (batch_size,) float32, poids IS normalisés par le max.
         """
         n = len(self.tree)
-        # Dimension de l'etat deduite de la premiere transition stockee (12 pour Snake).
-        state_dim = len(self.tree.data[0][0])
-        states = np.empty((batch_size, state_dim), dtype=np.float32)
-        actions = np.empty(batch_size, dtype=np.int64)
-        rewards = np.empty(batch_size, dtype=np.float32)
-        next_states = np.empty((batch_size, state_dim), dtype=np.float32)
-        dones = np.empty(batch_size, dtype=np.float32)
-        tree_indices = np.empty(batch_size, dtype=np.int64)
-        priorities = np.empty(batch_size, dtype=np.float64)
-
         total = self.tree.total
         segment = total / batch_size
-        for i in range(batch_size):
-            low = segment * i
-            high = segment * (i + 1)
-            value = np.random.uniform(low, high)
-            # Clamp defensif : eviter de deborder sur total a cause des arrondis flottants.
-            value = min(value, total - 1e-8)
 
-            tree_idx, priority, data = self.tree.get(value)
-            # Robustesse : priorite/donnee invalide (arrondi flottant) -> on retire pres de la racine.
-            while data is None or priority <= 0.0:
-                value = np.random.uniform(0, total - 1e-8)
-                tree_idx, priority, data = self.tree.get(value)
+        offsets = np.arange(batch_size, dtype=np.float64)
+        lows = segment * offsets
+        highs = segment * (offsets + 1.0)
+        values = np.random.uniform(lows, highs)
+        # Clamp defensif : eviter de deborder sur total a cause des arrondis flottants.
+        values = np.minimum(values, total - 1e-8)
 
-            state, action, reward, next_state, done = data
-            states[i] = state
-            actions[i] = action
-            rewards[i] = reward
-            next_states[i] = next_state
-            dones[i] = done
-            tree_indices[i] = tree_idx
-            priorities[i] = priority
+        tree_indices, priorities = self.tree.get_batch(values)
+
+        # Robustesse : priorite invalide (arrondi flottant) -> on retire uniformement dans [0, total).
+        invalid = priorities <= 0.0
+        while invalid.any():
+            n_invalid = int(invalid.sum())
+            retry_values = np.random.uniform(0.0, total - 1e-8, size=n_invalid)
+            retry_idx, retry_pri = self.tree.get_batch(retry_values)
+            tree_indices[invalid] = retry_idx
+            priorities[invalid] = retry_pri
+            invalid = priorities <= 0.0
+
+        positions = tree_indices - (self.capacity - 1)
+        states = self._states[positions]
+        actions = self._actions[positions]
+        rewards = self._rewards[positions]
+        next_states = self._next_states[positions]
+        dones = self._dones[positions]
 
         # Poids d'importance sampling : (N * P(i))^(-beta), normalises par le max.
         beta = self._beta()
@@ -256,17 +375,18 @@ class PrioritizedReplayBuffer:
         où TD_i est l'erreur TD (cible - Q prédite). Les transitions avec
         un TD élevé (apprentissage imparfait) sont rehaussées en priorité,
         tandis que celles bien apprises (TD faible) sont déprioritarisées.
+        Mise à jour vectorisée dans le SumTree (cf. `SumTree.update_batch`).
 
         Args:
             tree_indices: array-like, indices retournés par sample().
             td_errors: array-like, erreurs TD calculées (cible - Q).
         """
-        tree_indices = np.asarray(tree_indices)
+        tree_indices = np.asarray(tree_indices, dtype=np.int64)
         td_errors = np.asarray(td_errors)
         new_priorities = (np.abs(td_errors) + self.eps) ** self.alpha
-        for tree_idx, priority in zip(tree_indices, new_priorities):
-            self.tree.update(int(tree_idx), float(priority))
-            self.max_priority = max(self.max_priority, float(priority))
+        self.tree.update_batch(tree_indices, new_priorities)
+        if new_priorities.size:
+            self.max_priority = max(self.max_priority, float(new_priorities.max()))
 
     def __len__(self) -> int:
         """Retourne le nombre de transitions actuellement stockées."""
@@ -345,5 +465,66 @@ if __name__ == "__main__":
     assert beta_initial < beta_final
     assert abs(beta_final - 1.0) < 1e-9
     print(f"[6] OK beta {beta_initial:.3f} -> {beta_final:.3f}")
+
+    # 7) Coherence tree.total == somme des feuilles apres 500 update_batch avec doublons d'indices.
+    rng = np.random.default_rng(42)
+    tree7 = SumTree(capacity=1000)
+    for i in range(1000):
+        tree7.add(float(rng.uniform(0.1, 5.0)), i)
+    leaf_start = tree7.capacity - 1
+    for _ in range(500):
+        # Indices tires dans une petite fenetre de 50 feuilles -> doublons quasi garantis sur 32 tirages.
+        batch_idx = leaf_start + rng.integers(0, 50, size=32)
+        batch_pri = rng.uniform(0.1, 5.0, size=32)
+        tree7.update_batch(batch_idx, batch_pri)
+    leaves_sum = float(tree7.tree[leaf_start:].sum())
+    assert abs(tree7.total - leaves_sum) < 1e-6, (
+        f"incoherence apres update_batch : total={tree7.total}, somme feuilles={leaves_sum}"
+    )
+    print(f"[7] OK tree.total == somme des feuilles apres 500 update_batch avec doublons (total={tree7.total:.4f})")
+
+    # 8) Benchmark sample(128)+update_priorities(128) sur 50000 transitions : ancien vs nouveau.
+    import importlib.util
+    import time as _time
+
+    _OLD_PATH = (
+        r"C:\Users\louis\AppData\Local\Temp\claude\C--Users-louis-Documents-LeSerpent2026"
+        r"\569511f5-14da-4cf0-a043-3efbd509decd\scratchpad\old_replay_buffer.py"
+    )
+    _spec = importlib.util.spec_from_file_location("old_replay_buffer", _OLD_PATH)
+    _old_module = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_old_module)  # nom de module != "__main__" -> ses propres tests ne s'executent pas
+
+    def _build_and_fill(cls, capacity=50_000, n_items=50_000, seed=0):
+        b = cls(capacity=capacity, beta_frames=1_000_000)
+        r = np.random.default_rng(seed)
+        for _ in range(n_items):
+            s = r.standard_normal(12).astype(np.float32)
+            ns = r.standard_normal(12).astype(np.float32)
+            a = int(r.integers(0, 3))
+            rew = float(r.standard_normal())
+            b.add(s, a, rew, ns, False)
+        return b
+
+    def _bench(buffer, n_iters=200, batch_size=128, seed=1):
+        r = np.random.default_rng(seed)
+        t0 = _time.perf_counter()
+        for _ in range(n_iters):
+            _, _, _, _, _, t_idx, _ = buffer.sample(batch_size)
+            td_errors = r.standard_normal(batch_size).astype(np.float32)
+            buffer.update_priorities(t_idx, td_errors)
+        return _time.perf_counter() - t0
+
+    old_buf = _build_and_fill(_old_module.PrioritizedReplayBuffer)
+    new_buf = _build_and_fill(PrioritizedReplayBuffer)
+
+    t_old = _bench(old_buf)
+    t_new = _bench(new_buf)
+    speedup = t_old / t_new if t_new > 0 else float("inf")
+    print(
+        f"[8] Benchmark sample(128)+update_priorities(128) x200 sur buffer de 50000 : "
+        f"ancien={t_old:.3f}s, nouveau={t_new:.3f}s (x{speedup:.1f} plus rapide)"
+    )
+    assert t_new < t_old, "la nouvelle implementation devrait etre plus rapide que l'ancienne"
 
     print("=== Tous les tests sont passes ===")

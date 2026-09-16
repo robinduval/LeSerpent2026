@@ -1,13 +1,16 @@
 """snake-ia.py - Point d'entrée CLI du projet Snake RL (D3QN + PER).
 
 Nom avec tiret : ce fichier n'est jamais importé, seulement exécuté.
-Fournit 4 sous-commandes (via argparse) : train, play, summary, plot.
+Fournit 5 sous-commandes (via argparse) : train, play, summary, plot, compare.
 
 Exemples d'usage :
   python snake-ia.py train --episodes 600 --seed 42
+  python snake-ia.py train --episodes 600 --seed 42 --train-every 4 --n-step 3 --tau 0.005
   python snake-ia.py play --model results/best_model.pth --games 5
   python snake-ia.py summary --csv results/training_log.csv
   python snake-ia.py plot --csv results/training_log.csv --out results/training_plot.png
+  python snake-ia.py compare results/training_log.csv autre_run/training_log.csv \
+      --labels reference optimise --out results/compare.png
   python snake-ia.py --help
 """
 
@@ -35,7 +38,8 @@ def cmd_train(args):
     """Handler de la sous-commande 'train' : entraîne l'agent D3QN.
 
     Args:
-        args: Arguments argparse (episodes, render, results_dir, seed).
+        args: Arguments argparse (episodes, render, results_dir, seed, train_every,
+            n_step, tau, threads, eps_end, eps_decay).
     """
     train(
         n_episodes=args.episodes,
@@ -44,6 +48,12 @@ def cmd_train(args):
         seed=args.seed,
         # Sans --fps : clock acceleree TRAINING_FPS (entrainement seulement).
         fps=TRAINING_FPS if args.fps is None else args.fps,
+        train_every=args.train_every,
+        n_step=args.n_step,
+        tau=args.tau,
+        threads=args.threads,
+        eps_end=args.eps_end,
+        eps_decay=args.eps_decay,
     )
 
 
@@ -80,8 +90,18 @@ def cmd_plot(args):
     plot_training(args.csv, args.out)
 
 
+def cmd_compare(args):
+    """Handler de la sous-commande 'compare' : compare plusieurs runs (helper.py).
+
+    Args:
+        args: Arguments argparse (csv (liste), labels, out).
+    """
+    from helper import compare_runs
+    compare_runs(args.csv, labels=args.labels, png_path=args.out, print_report=True)
+
+
 def build_parser():
-    """Construit le parser argparse avec 4 sous-commandes (train, play, summary, plot).
+    """Construit le parser argparse avec 5 sous-commandes (train, play, summary, plot, compare).
 
     Returns:
         argparse.ArgumentParser: Parser configuré avec tous les arguments et handlers.
@@ -104,6 +124,32 @@ def build_parser():
     p_train.add_argument(
         "--results-dir", type=str, default=None,
         help="Dossier de sortie (defaut: <dossier du script>/results).",
+    )
+    p_train.add_argument(
+        "--train-every", type=int, default=4,
+        help="Un pas de gradient tous les N pas de jeu (defaut: 4 ; x3-4 plus rapide).",
+    )
+    p_train.add_argument(
+        "--n-step", type=int, default=3,
+        help="Horizon des retours n-step (defaut: 3 ; propage plus vite la penalite de mort).",
+    )
+    p_train.add_argument(
+        "--tau", type=float, default=0.005,
+        help="Coefficient Polyak de mise a jour douce de la cible (defaut: 0.005 ; "
+             "0 desactive et retombe sur le hard sync tous les target_sync_every pas).",
+    )
+    p_train.add_argument(
+        "--threads", type=int, default=None,
+        help="torch.set_num_threads (defaut: reglage torch par defaut). Utile pour "
+             "lancer plusieurs seeds en parallele sans contention CPU.",
+    )
+    p_train.add_argument(
+        "--eps-end", type=float, default=0.02,
+        help="Plancher d'exploration epsilon (defaut: 0.02).",
+    )
+    p_train.add_argument(
+        "--eps-decay", type=float, default=0.985,
+        help="Decroissance d'epsilon par episode (defaut: 0.985).",
     )
     p_train.set_defaults(func=cmd_train)
 
@@ -133,6 +179,23 @@ def build_parser():
         help="Chemin de sortie du graphe (defaut: results/training_plot.png).",
     )
     p_plot.set_defaults(func=cmd_plot)
+
+    p_compare = subparsers.add_parser(
+        "compare", help="Compare plusieurs runs d'entrainement (training_log.csv) via helper.py.",
+    )
+    p_compare.add_argument(
+        "csv", type=str, nargs="+",
+        help="Chemins des training_log.csv a comparer (au moins un).",
+    )
+    p_compare.add_argument(
+        "--labels", type=str, nargs="+", default=None,
+        help="Un nom par run, meme ordre que les CSV (defaut: nom du dossier parent).",
+    )
+    p_compare.add_argument(
+        "--out", type=str, default=None,
+        help="Chemin de sortie du PNG comparatif (defaut: aucun graphe genere).",
+    )
+    p_compare.set_defaults(func=cmd_compare)
 
     return parser
 
