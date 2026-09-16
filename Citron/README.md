@@ -1,10 +1,25 @@
-C'est ici que vous devez décrire votre timeline de la manière suivante (HH:MM : Activité / Constatation / Hypothèse / Réponse).
-Règle : une heure : une minute : une instruction par ligne, pas de saut de ligne.
+# Timeline du groupe
 
-Exemple :
-19:00 : Arrivée du prof 
-19:10 : Avec Bob, on se demande si l'usage de machin truc permettra de blabla alors nous allons essayer trucmuch...
-19:20 : Finalement, ça marche pas, alors on va essayer de bidouiller le petit zinzin
+20:10 : On envoie le premier prompt pour comprendre exactement comment on va itérer pour faire du RL, ainsi qu'un prompt pour expliquer à notre IA le sujet et le but.
+20:15 : Recherche sur l'autre agent : comment aider le premier pour gagner du temps et des performances.
+20:20 : Combinaison des réflexions des deux agents.
+20:27 : Premier prompt pour l'écriture de code, qui s'appuie sur toutes les réflexions que nous avons eues avec l'agent auparavant.
+20:33 : Premier résultat → pas terrible.
+20:36 : Lancement d'un deuxième prompt où l'on change plusieurs règles : utilisation de plusieurs serpents et accélération possible du temps pendant l'entraînement, même si la clock ne peut pas être modifiée lors de l'évaluation qui compte.
+20:39 : Deuxième résultat → ça s'améliore grandement, mais l'agent n'a pas compris ce qu'on lui a dit vis-à-vis du temps.
+20:46 : Sortie d'un premier score en situation réelle → 19 points pour un objectif de 10 → nul en gros, au regard de nos ambitions.
+21:00 : Fin du premier gros batch d'entraînement → meilleur score : 61. Nous trouvons cela insuffisant.
+21:14 : On a changé un peu les règles et ça fonctionne bien mieux, notamment le fait qu'il sait mieux où il se trouve maintenant. Techniquement, nous avons enrichi les observations de l'agent, sans modifier les règles du jeu.
+21:20 : Meilleur score à 90, on avance. L'entraînement s'améliore bien plus rapidement.
+21:25 : Entraînement centré sur le meilleur score.
+21:35 : Score maximal : 117 pour environ 315 secondes (315,8 secondes équivalentes à 5 Hz, calculées à partir des 1 579 déplacements de la partie d'entraînement).
+
+## Conclusion du groupe
+
+On n'a pas assez réfléchi avant de lancer l'entraînement ; il n'était donc pas optimal et nous avons perdu près d'un tiers du temps. C'était un peu abrutissant de faire cela pendant une heure et demie : nous réfléchissions moins bien à la fin, alors que c'était le moment où nous aurions dû être les plus frais.
+
+## Journal technique détaillé
+
 20:27 : Début de l'implémentation RL ; règles du socle conservées, budget provisoirement fixé de 20:00 à 22:00.
 20:30 : Lancement de la première partie autonome avec Double DQN, replay buffer et clock inchangée à 5 Hz.
 20:32 : Première partie terminée par collision avec le corps : 2 points, 108,52 secondes, 540 déplacements, 477 mises à jour ; checkpoint et métriques sauvegardés dans runs/20260916-203043-456478-train.
