@@ -225,8 +225,10 @@ class Agent:
     def epsilon(self):
         """Epsilon décroissant exponentiellement PAR ÉPISODE (pas par pas).
 
-        Avec eps_decay=0.98 et ~230 épisodes, sature rapidement vers eps_end.
-        Découplé de n_steps pour un exploration cohérente par partie (pas par transition).
+        Avec les défauts (eps_decay=0.985), sature vers eps_end aux alentours de l'ép. ~260
+        (au lieu de ~230 avec l'ancien 0.98), pour garder un peu d'exploration plus longtemps
+        une fois le plateau de score atteint. Découplé du nombre de pas de jeu, pour une
+        exploration cohérente par partie (pas par transition).
 
         Returns:
             float: Valeur courante d'epsilon, bornée à [eps_end, eps_start].
@@ -695,7 +697,11 @@ if __name__ == "__main__":
     assert len(nstep_agent.memory) == 0, "Aucun push tant que le tampon n-step n'est pas plein"
     nstep_agent.remember(s2, 2, 4.0, s3, False)
     assert len(nstep_agent.memory) == 1, "Le tampon plein doit emettre exactement une transition"
-    state_stored, action_stored, R_stored, next_state_stored, done_stored = nstep_agent.memory.tree.data[0]
+    # Inspection via l'API publique sample() (le stockage interne du buffer PER n'est pas garanti).
+    _, actions_5a, rewards_5a, next_states_5a, dones_5a, _, _ = nstep_agent.memory.sample(1)
+    action_stored, R_stored, next_state_stored, done_stored = (
+        actions_5a[0], rewards_5a[0], next_states_5a[0], dones_5a[0]
+    )
     assert action_stored == 0
     assert abs(R_stored - 3.0) < 1e-6, f"R attendu 3.0, obtenu {R_stored}"
     assert np.allclose(next_state_stored, s3), "next_state doit etre l'etat apres la 3e transition"
@@ -710,14 +716,13 @@ if __name__ == "__main__":
     assert len(mid_agent.memory) == 0, "Tampon a 2/3 : pas encore d'emission automatique"
     mid_agent.flush_n_step()
     assert len(mid_agent.memory) == 2, "flush_n_step doit emettre les 2 sous-sequences restantes"
-    _, _, R0, next0, done0 = mid_agent.memory.tree.data[0]
-    assert abs(R0 - 2.0) < 1e-6, f"R tronque attendu 2.0 (1 + 0.5*2), obtenu {R0}"
-    assert done0 == 1.0
-    assert np.allclose(next0, s2)
-    _, _, R1, next1, done1 = mid_agent.memory.tree.data[1]
-    assert abs(R1 - 2.0) < 1e-6, f"R (transition seule, reward=2) attendu 2.0, obtenu {R1}"
-    assert done1 == 1.0
-    print(f"Test 5b OK : done au milieu, R tronque={R0} (attendu 2.0), done={bool(done0)}.")
+    # Les 2 sous-sequences restantes (depuis s0 et depuis s1) ont toutes deux R=2.0, done=True.
+    _, _, rewards_5b, next_states_5b, dones_5b, _, _ = mid_agent.memory.sample(2)
+    for R_i, next_i, done_i in zip(rewards_5b, next_states_5b, dones_5b):
+        assert abs(R_i - 2.0) < 1e-6, f"R tronque attendu 2.0, obtenu {R_i}"
+        assert done_i == 1.0
+        assert np.allclose(next_i, s2)
+    print(f"Test 5b OK : done au milieu, R tronque={rewards_5b[0]} (attendu 2.0), done=True.")
 
     # Test 5 (c) : flush_n_step en fin d'episode emet bien les restes non encore pousses.
     flush_agent = Agent(gamma=0.9, n_step=3, batch_size=4, buffer_capacity=50,
