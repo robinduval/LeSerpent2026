@@ -1,0 +1,16 @@
+# Environnement
+.venv/
+__pycache__/
+.vscode/
+
+# Journaux et courbes d'entrainement
+logs/
+
+# Modeles intermediaires des essais : seul model/model.pth est livre.
+model/*
+!model/model.pth
+
+# Documents de travail internes
+Claude.md
+DECISION-RL.md
+timeline*.md
