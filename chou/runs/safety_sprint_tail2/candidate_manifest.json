@@ -1,0 +1,32 @@
+{
+  "kind": "unqualified hybrid training experiment",
+  "checkpoint_sha256": "c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c",
+  "policy": "DQN Q argmax after local tail2 filter",
+  "pretraining_transitions": 1000000,
+  "pretraining_updates": 249751,
+  "additional_transitions": 167138,
+  "additional_rl_updates": 10384,
+  "total_transitions": 1167138,
+  "total_rl_updates": 260135,
+  "additional_training_wall_seconds": 29.060064999999668,
+  "total_training_wall_seconds": 209.5571009589985,
+  "training_episodes": 20,
+  "training_completion_count": 7,
+  "training_score_mean": 199.75,
+  "training_score_median": 218.0,
+  "training_score_min": 24,
+  "training_score_max": 223,
+  "training_cutoffs": 4,
+  "reward_move": -0.02,
+  "reward_apple": 10,
+  "reward_collision": -10,
+  "reward_completed": 100,
+  "shaping_coefficient_during_sprint": 0,
+  "training_sampling": "Greedy learned Q with an explicit local filter; one gradient update every 16 transitions.",
+  "limitations": [
+    "Training scores are not heldout validation or official timed scores.",
+    "Checkpoint original metadata training_transitions and training_updates are inherited and stale; authoritative serialized agent counters and this manifest give totals.",
+    "Filter is heuristic, no guarantee of completion or safety.",
+    "Training resume starts empty replay and new episode RNG; not exact resume."
+  ]
+}

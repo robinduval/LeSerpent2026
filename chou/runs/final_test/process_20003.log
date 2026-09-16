@@ -1,0 +1,20 @@
+{"model_id": "selected:3b3a0bf2cfb1", "configuration_id": "ordered_1m_seed23", "seed": 20003, "official_score": 51, "official_time_seconds": 96.30676198005676, "time_convention": "wall time at terminal event or external cutoff; source display never freezes", "rl_return": 491.56000000000375, "apples": 51, "steps": 474, "completed": false, "termination_reason": "self_collision", "final_length": 54, "decision_latency": 0.000533892938838568, "decision_latency_p95": 0.0008529914498467406, "evaluation_step_budget": 2000, "clock_hz": 5, "observed_move_hz": 4.911383771060154, "training_transitions": 1000000, "training_updates": 249751, "training_wall_time": 180.49703595899882, "demonstration_cost": 0, "simulation_cost": 0, "classability": "terminal game; official multi-trial aggregation unknown"}
+{
+  "episodes": 1,
+  "score_mean": 51,
+  "score_median": 51,
+  "score_max": 51,
+  "score_min": 51,
+  "score_std": 0.0,
+  "completed": 0,
+  "completion_rate": 0.0,
+  "collision_rate": 1.0,
+  "external_cutoffs": 0,
+  "target_223_rate": 0.0,
+  "terminal_time_mean_by_exact_score": {
+    "51": 96.30676198005676
+  },
+  "terminal_time_count_by_exact_score": {
+    "51": 1
+  }
+}

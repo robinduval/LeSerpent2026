@@ -1,0 +1,751 @@
+{
+  "timing": "accelerated_diagnostics_not_official_5Hz",
+  "seed_start": 43000,
+  "seeds": 20,
+  "models": {
+    "runs/hybrid_rewired/candidate_000100000.pt": {
+      "records": [
+        {
+          "seed": 43000,
+          "score": 223,
+          "steps": 7431,
+          "completed": true,
+          "choice_states": 334
+        },
+        {
+          "seed": 43001,
+          "score": 223,
+          "steps": 7991,
+          "completed": true,
+          "choice_states": 446
+        },
+        {
+          "seed": 43002,
+          "score": 223,
+          "steps": 7615,
+          "completed": true,
+          "choice_states": 320
+        },
+        {
+          "seed": 43003,
+          "score": 223,
+          "steps": 8658,
+          "completed": true,
+          "choice_states": 370
+        },
+        {
+          "seed": 43004,
+          "score": 223,
+          "steps": 7733,
+          "completed": true,
+          "choice_states": 402
+        },
+        {
+          "seed": 43005,
+          "score": 223,
+          "steps": 7847,
+          "completed": true,
+          "choice_states": 308
+        },
+        {
+          "seed": 43006,
+          "score": 223,
+          "steps": 8031,
+          "completed": true,
+          "choice_states": 342
+        },
+        {
+          "seed": 43007,
+          "score": 223,
+          "steps": 8612,
+          "completed": true,
+          "choice_states": 376
+        },
+        {
+          "seed": 43008,
+          "score": 223,
+          "steps": 8591,
+          "completed": true,
+          "choice_states": 299
+        },
+        {
+          "seed": 43009,
+          "score": 223,
+          "steps": 7985,
+          "completed": true,
+          "choice_states": 361
+        },
+        {
+          "seed": 43010,
+          "score": 223,
+          "steps": 7821,
+          "completed": true,
+          "choice_states": 353
+        },
+        {
+          "seed": 43011,
+          "score": 223,
+          "steps": 7296,
+          "completed": true,
+          "choice_states": 374
+        },
+        {
+          "seed": 43012,
+          "score": 223,
+          "steps": 7771,
+          "completed": true,
+          "choice_states": 290
+        },
+        {
+          "seed": 43013,
+          "score": 223,
+          "steps": 6920,
+          "completed": true,
+          "choice_states": 346
+        },
+        {
+          "seed": 43014,
+          "score": 223,
+          "steps": 7852,
+          "completed": true,
+          "choice_states": 333
+        },
+        {
+          "seed": 43015,
+          "score": 223,
+          "steps": 7777,
+          "completed": true,
+          "choice_states": 256
+        },
+        {
+          "seed": 43016,
+          "score": 223,
+          "steps": 7730,
+          "completed": true,
+          "choice_states": 331
+        },
+        {
+          "seed": 43017,
+          "score": 223,
+          "steps": 7689,
+          "completed": true,
+          "choice_states": 365
+        },
+        {
+          "seed": 43018,
+          "score": 223,
+          "steps": 8287,
+          "completed": true,
+          "choice_states": 449
+        },
+        {
+          "seed": 43019,
+          "score": 223,
+          "steps": 8361,
+          "completed": true,
+          "choice_states": 242
+        }
+      ],
+      "mean_score": 223.0,
+      "mean_steps": 7899.9,
+      "min_score": 223,
+      "completion_count": 20,
+      "training_transitions": 100000,
+      "training_updates": 12485
+    },
+    "runs/hybrid_rewired/candidate_000500000.pt": {
+      "records": [
+        {
+          "seed": 43000,
+          "score": 223,
+          "steps": 7524,
+          "completed": true,
+          "choice_states": 281
+        },
+        {
+          "seed": 43001,
+          "score": 223,
+          "steps": 7589,
+          "completed": true,
+          "choice_states": 376
+        },
+        {
+          "seed": 43002,
+          "score": 223,
+          "steps": 8855,
+          "completed": true,
+          "choice_states": 302
+        },
+        {
+          "seed": 43003,
+          "score": 223,
+          "steps": 7814,
+          "completed": true,
+          "choice_states": 286
+        },
+        {
+          "seed": 43004,
+          "score": 223,
+          "steps": 8352,
+          "completed": true,
+          "choice_states": 339
+        },
+        {
+          "seed": 43005,
+          "score": 223,
+          "steps": 7226,
+          "completed": true,
+          "choice_states": 296
+        },
+        {
+          "seed": 43006,
+          "score": 223,
+          "steps": 7634,
+          "completed": true,
+          "choice_states": 282
+        },
+        {
+          "seed": 43007,
+          "score": 223,
+          "steps": 7851,
+          "completed": true,
+          "choice_states": 320
+        },
+        {
+          "seed": 43008,
+          "score": 223,
+          "steps": 7751,
+          "completed": true,
+          "choice_states": 422
+        },
+        {
+          "seed": 43009,
+          "score": 223,
+          "steps": 8268,
+          "completed": true,
+          "choice_states": 279
+        },
+        {
+          "seed": 43010,
+          "score": 223,
+          "steps": 8177,
+          "completed": true,
+          "choice_states": 233
+        },
+        {
+          "seed": 43011,
+          "score": 223,
+          "steps": 7998,
+          "completed": true,
+          "choice_states": 310
+        },
+        {
+          "seed": 43012,
+          "score": 223,
+          "steps": 7536,
+          "completed": true,
+          "choice_states": 329
+        },
+        {
+          "seed": 43013,
+          "score": 223,
+          "steps": 7834,
+          "completed": true,
+          "choice_states": 345
+        },
+        {
+          "seed": 43014,
+          "score": 223,
+          "steps": 8046,
+          "completed": true,
+          "choice_states": 368
+        },
+        {
+          "seed": 43015,
+          "score": 223,
+          "steps": 7625,
+          "completed": true,
+          "choice_states": 307
+        },
+        {
+          "seed": 43016,
+          "score": 223,
+          "steps": 7804,
+          "completed": true,
+          "choice_states": 297
+        },
+        {
+          "seed": 43017,
+          "score": 223,
+          "steps": 7383,
+          "completed": true,
+          "choice_states": 315
+        },
+        {
+          "seed": 43018,
+          "score": 223,
+          "steps": 7799,
+          "completed": true,
+          "choice_states": 322
+        },
+        {
+          "seed": 43019,
+          "score": 223,
+          "steps": 7605,
+          "completed": true,
+          "choice_states": 220
+        }
+      ],
+      "mean_score": 223.0,
+      "mean_steps": 7833.55,
+      "min_score": 223,
+      "completion_count": 20,
+      "training_transitions": 500000,
+      "training_updates": 62485
+    },
+    "programmed_greedy": {
+      "records": [
+        {
+          "seed": 43000,
+          "score": 223,
+          "steps": 9181,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43001,
+          "score": 223,
+          "steps": 8019,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43002,
+          "score": 223,
+          "steps": 8752,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43003,
+          "score": 223,
+          "steps": 8841,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43004,
+          "score": 223,
+          "steps": 8682,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43005,
+          "score": 223,
+          "steps": 8207,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43006,
+          "score": 223,
+          "steps": 7649,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43007,
+          "score": 223,
+          "steps": 8228,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43008,
+          "score": 223,
+          "steps": 9598,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43009,
+          "score": 223,
+          "steps": 9358,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43010,
+          "score": 223,
+          "steps": 8164,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43011,
+          "score": 223,
+          "steps": 8084,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43012,
+          "score": 223,
+          "steps": 7587,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43013,
+          "score": 223,
+          "steps": 8736,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43014,
+          "score": 223,
+          "steps": 8017,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43015,
+          "score": 223,
+          "steps": 7554,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43016,
+          "score": 223,
+          "steps": 8019,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43017,
+          "score": 223,
+          "steps": 7897,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43018,
+          "score": 223,
+          "steps": 8401,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43019,
+          "score": 223,
+          "steps": 8074,
+          "completed": true,
+          "choice_states": 0
+        }
+      ],
+      "mean_score": 223.0,
+      "mean_steps": 8352.4,
+      "min_score": 223,
+      "completion_count": 20
+    },
+    "uniform_safe_random": {
+      "records": [
+        {
+          "seed": 43000,
+          "score": 223,
+          "steps": 8942,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43001,
+          "score": 223,
+          "steps": 9849,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43002,
+          "score": 223,
+          "steps": 9060,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43003,
+          "score": 223,
+          "steps": 9448,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43004,
+          "score": 223,
+          "steps": 8824,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43005,
+          "score": 223,
+          "steps": 9278,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43006,
+          "score": 223,
+          "steps": 8615,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43007,
+          "score": 223,
+          "steps": 8970,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43008,
+          "score": 223,
+          "steps": 9024,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43009,
+          "score": 223,
+          "steps": 8940,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43010,
+          "score": 223,
+          "steps": 9035,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43011,
+          "score": 223,
+          "steps": 9019,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43012,
+          "score": 223,
+          "steps": 9239,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43013,
+          "score": 223,
+          "steps": 8882,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43014,
+          "score": 223,
+          "steps": 8757,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43015,
+          "score": 223,
+          "steps": 8906,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43016,
+          "score": 223,
+          "steps": 8350,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43017,
+          "score": 223,
+          "steps": 8400,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43018,
+          "score": 223,
+          "steps": 9446,
+          "completed": true,
+          "choice_states": 0
+        },
+        {
+          "seed": 43019,
+          "score": 223,
+          "steps": 8530,
+          "completed": true,
+          "choice_states": 0
+        }
+      ],
+      "mean_score": 223.0,
+      "mean_steps": 8975.7,
+      "min_score": 223,
+      "completion_count": 20
+    },
+    "untrained_network": {
+      "records": [
+        {
+          "seed": 43000,
+          "score": 223,
+          "steps": 12026,
+          "completed": true,
+          "choice_states": 8766
+        },
+        {
+          "seed": 43001,
+          "score": 223,
+          "steps": 11394,
+          "completed": true,
+          "choice_states": 8017
+        },
+        {
+          "seed": 43002,
+          "score": 223,
+          "steps": 12281,
+          "completed": true,
+          "choice_states": 8931
+        },
+        {
+          "seed": 43003,
+          "score": 223,
+          "steps": 12747,
+          "completed": true,
+          "choice_states": 9560
+        },
+        {
+          "seed": 43004,
+          "score": 223,
+          "steps": 13117,
+          "completed": true,
+          "choice_states": 9612
+        },
+        {
+          "seed": 43005,
+          "score": 223,
+          "steps": 13005,
+          "completed": true,
+          "choice_states": 9464
+        },
+        {
+          "seed": 43006,
+          "score": 223,
+          "steps": 11789,
+          "completed": true,
+          "choice_states": 8779
+        },
+        {
+          "seed": 43007,
+          "score": 223,
+          "steps": 11718,
+          "completed": true,
+          "choice_states": 8226
+        },
+        {
+          "seed": 43008,
+          "score": 223,
+          "steps": 12070,
+          "completed": true,
+          "choice_states": 8665
+        },
+        {
+          "seed": 43009,
+          "score": 223,
+          "steps": 12162,
+          "completed": true,
+          "choice_states": 8705
+        },
+        {
+          "seed": 43010,
+          "score": 223,
+          "steps": 13192,
+          "completed": true,
+          "choice_states": 9986
+        },
+        {
+          "seed": 43011,
+          "score": 223,
+          "steps": 12127,
+          "completed": true,
+          "choice_states": 8701
+        },
+        {
+          "seed": 43012,
+          "score": 223,
+          "steps": 12215,
+          "completed": true,
+          "choice_states": 9147
+        },
+        {
+          "seed": 43013,
+          "score": 223,
+          "steps": 12374,
+          "completed": true,
+          "choice_states": 9057
+        },
+        {
+          "seed": 43014,
+          "score": 223,
+          "steps": 12368,
+          "completed": true,
+          "choice_states": 9232
+        },
+        {
+          "seed": 43015,
+          "score": 223,
+          "steps": 12629,
+          "completed": true,
+          "choice_states": 9515
+        },
+        {
+          "seed": 43016,
+          "score": 223,
+          "steps": 12524,
+          "completed": true,
+          "choice_states": 9211
+        },
+        {
+          "seed": 43017,
+          "score": 223,
+          "steps": 12932,
+          "completed": true,
+          "choice_states": 9182
+        },
+        {
+          "seed": 43018,
+          "score": 223,
+          "steps": 12635,
+          "completed": true,
+          "choice_states": 9494
+        },
+        {
+          "seed": 43019,
+          "score": 223,
+          "steps": 11665,
+          "completed": true,
+          "choice_states": 8259
+        }
+      ],
+      "mean_score": 223.0,
+      "mean_steps": 12348.5,
+      "min_score": 223,
+      "completion_count": 20
+    }
+  }
+}

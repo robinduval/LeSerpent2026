@@ -1,6 +1,35 @@
 import pygame
 import random
 import time
+import os
+
+# --- PILOTAGE PAR LE MODÈLE DQN ENTRAÎNÉ (snake-ia.py) ---
+# Ce fichier ne fait plus jouer un humain au clavier : la direction du
+# serpent est décidée à chaque déplacement par le réseau de neurones
+# entraîné via `python snake-ia.py train ...` (voir README.md). C'est du
+# DQN pur, sans A* (l'expert A* n'existe que pendant l'entraînement, cf.
+# snake-ia.py) : ce fichier ne fait QUE charger des poids déjà appris et
+# les utiliser, il ne réentraîne rien et n'importe aucune logique A*.
+import glob
+import numpy as np
+import torch
+import torch.nn as nn
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Dossiers où chercher des modèles entraînés (cf. snake-ia.py train/compare).
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_SEARCH_DIRS = [
+    os.path.join(SCRIPT_DIR, "results"),
+    os.path.join(SCRIPT_DIR, "results_compare"),
+    os.path.join(SCRIPT_DIR, "results_final"),
+]
+# Modèle standard utilisé par défaut (le plus abouti à ce jour : entraînement
+# A* + reward "shaped" incluant le bonus de score et le malus de temps).
+# Tous les autres modèles entraînés restent dans leurs dossiers (rien n'est
+# supprimé), mais le jeu ne demande plus de choisir : il charge celui-ci
+# directement.
+STANDARD_MODEL_PATH = os.path.join(SCRIPT_DIR, "results_compare", "astar-shaped_seed100_ep600_best.pth")
 
 # --- CONSTANTES DE JEU ---
 # Taille de la grille (20x20)
@@ -29,6 +58,9 @@ UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+# Ordre "trigonométrique" utilisé pour tourner à droite/gauche par rapport
+# à la direction actuelle du serpent (cf. relative_to_absolute plus bas).
+CLOCKWISE = [RIGHT, DOWN, LEFT, UP]
 
 # --- CLASSES DU JEU ---
 
@@ -134,6 +166,127 @@ class Apple:
             # Ajout d'un petit reflet pour un aspect "pomme"
             pygame.draw.circle(surface, BLANC, (rect.x + CELL_SIZE * 0.7, rect.y + CELL_SIZE * 0.3), CELL_SIZE // 8)
 
+# --- AGENT DQN (décisions du serpent, cf. snake-ia.py pour l'entraînement) ---
+
+class QNet(nn.Module):
+    """Même petit réseau (11 -> hidden -> 3) que celui entraîné par
+    snake-ia.py : il faut la même architecture pour pouvoir recharger les
+    poids sauvegardés (state_dict)."""
+    def __init__(self, hidden_size=256):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(11, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, 3),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+def get_state(snake, apple):
+    """Reproduit exactement l'état utilisé à l'entraînement (snake-ia.py::
+    get_state) : 3 dangers relatifs, 4 directions, 4 directions de la pomme,
+    sur un plateau torique (bords enroulés, comme move() ci-dessus)."""
+    head = snake.head_pos
+    direction = snake.direction
+    idx = CLOCKWISE.index(direction)
+    dir_straight = CLOCKWISE[idx]
+    dir_right = CLOCKWISE[(idx + 1) % 4]
+    dir_left = CLOCKWISE[(idx - 1) % 4]
+
+    def is_danger(move_dir):
+        next_pos = [(head[0] + move_dir[0]) % GRID_SIZE, (head[1] + move_dir[1]) % GRID_SIZE]
+        body_without_tail = snake.body[:-1] if not snake.grow_pending else snake.body
+        return next_pos in body_without_tail
+
+    apple_x, apple_y = apple.position if apple.position else head
+
+    def wrapped_delta(a, b):
+        d = a - b
+        if d > GRID_SIZE / 2:
+            d -= GRID_SIZE
+        elif d < -GRID_SIZE / 2:
+            d += GRID_SIZE
+        return d
+
+    dx = wrapped_delta(apple_x, head[0])
+    dy = wrapped_delta(apple_y, head[1])
+
+    state = [
+        is_danger(dir_straight),
+        is_danger(dir_right),
+        is_danger(dir_left),
+        direction == LEFT,
+        direction == RIGHT,
+        direction == UP,
+        direction == DOWN,
+        dx < 0,
+        dx > 0,
+        dy < 0,
+        dy > 0,
+    ]
+    return np.array(state, dtype=np.float32)
+
+
+def relative_to_absolute(current_direction, relative_action):
+    """0=tout droit, 1=droite, 2=gauche -> direction absolue UP/DOWN/LEFT/RIGHT."""
+    idx = CLOCKWISE.index(current_direction)
+    if relative_action == 0:
+        return CLOCKWISE[idx]
+    elif relative_action == 1:
+        return CLOCKWISE[(idx + 1) % 4]
+    else:
+        return CLOCKWISE[(idx - 1) % 4]
+
+
+def find_available_models():
+    """Liste tous les modèles entraînés trouvés (results/, results_compare/,
+    results_final/), triés du plus récent au plus ancien. Ils restent tous
+    présents sur le disque (rien n'est supprimé) : cette liste n'est plus
+    montrée à l'utilisateur (cf. load_trained_model), elle sert seulement de
+    repli si le modèle standard est absent."""
+    paths = []
+    for d in MODEL_SEARCH_DIRS:
+        paths.extend(glob.glob(os.path.join(d, "*.pth")))
+    paths = sorted(set(paths), key=os.path.getmtime, reverse=True)
+    return paths
+
+
+def load_trained_model(path=None):
+    """Charge directement le modèle standard (STANDARD_MODEL_PATH), sans rien
+    demander à l'utilisateur. Si ce fichier précis n'existe pas (renommé,
+    déplacé...), retombe silencieusement sur le modèle entraîné le plus
+    récent trouvé dans MODEL_SEARCH_DIRS. Retourne (model, path) ou
+    (None, None) si aucun modèle n'existe encore (il faut d'abord lancer
+    `python snake-ia.py train ...`)."""
+    if path is None:
+        path = STANDARD_MODEL_PATH if os.path.exists(STANDARD_MODEL_PATH) else None
+        if path is None:
+            available = find_available_models()
+            path = available[0] if available else None
+    if path is None or not os.path.exists(path):
+        return None, None
+    checkpoint = torch.load(path, map_location=DEVICE, weights_only=False)
+    hidden_size = checkpoint.get("cfg", {}).get("hidden_size", 256)
+    model = QNet(hidden_size).to(DEVICE)
+    model.load_state_dict(checkpoint["model"])
+    model.eval()
+    return model, path
+
+
+def choose_action(model, snake, apple):
+    """Action gloutonne du DQN (pas d'exploration, pas d'A*) : c'est le
+    DQN seul qui pilote le serpent, exactement comme à l'évaluation finale
+    de snake-ia.py."""
+    state = get_state(snake, apple)
+    with torch.no_grad():
+        state_t = torch.from_numpy(state).unsqueeze(0).to(DEVICE)
+        q_values = model(state_t)
+        action = int(torch.argmax(q_values, dim=1).item())
+    return relative_to_absolute(snake.direction, action)
+
+
 # --- FONCTIONS D'AFFICHAGE ---
 
 def draw_grid(surface):
@@ -187,48 +340,67 @@ def display_message(surface, font, message, color=BLANC, y_offset=0):
 # --- BOUCLE PRINCIPALE DU JEU ---
 
 def main():
-    """Fonction principale pour exécuter le jeu Snake Classique."""
+    """Fonction principale pour exécuter le jeu Snake Classique.
+
+    Le serpent est piloté par le DQN entraîné (snake-ia.py) : à chaque
+    déplacement, le réseau choisit la direction, exactement comme lors de
+    l'évaluation finale (pas d'A*, pas d'exploration aléatoire). C'est un
+    test 100% visuel/humain du modèle appris, sans toucher à l'horloge, à
+    la grille ni au scoring officiels."""
     pygame.init()
-    
+
     # Configuration de l'écran
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Snake Classique - Socle de Base")
     clock = pygame.time.Clock()
-    
+
     # Configuration des polices
     font_main = pygame.font.Font(None, 40)
     font_game_over = pygame.font.Font(None, 80)
-    
+
+    # Chargement du modèle entraîné (cf. snake-ia.py train). S'il n'existe
+    # pas encore, on prévient et on retombe sur le clavier pour que ce
+    # fichier reste jouable sans avoir entraîné quoi que ce soit.
+    model, model_path = load_trained_model()
+    if model is not None:
+        pygame.display.set_caption(f"Snake - IA (DQN) joue [{os.path.basename(model_path)}]")
+        print(f"Modèle chargé : {model_path} -> le DQN pilote le serpent.")
+    else:
+        pygame.display.set_caption("Snake Classique - Socle de Base (clavier, aucun modèle trouvé)")
+        print("Aucun modèle entraîné trouvé (results/astar_seed0.pth). "
+              "Lancez d'abord `python snake-ia.py train --mode astar` pour voir l'IA jouer. "
+              "En attendant, contrôle au clavier.")
+
     # Initialisation des objets du jeu
     snake = Snake()
     apple = Apple(snake.body)
-    
+
     # Variables de jeu
     running = True
     game_over = False
     victory = False
-    
+
     # Démarrage du chronomètre
     start_time = time.time()
-    
+
     # Variable pour la gestion de la vitesse (pour ne bouger qu'une fois par tic)
     move_counter = 0
 
     # --- Boucle de jeu ---
     while running:
-        # 1. Gestion des Événements (Contrôles Clavier)
+        # 1. Gestion des Événements
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            
+
             if event.type == pygame.KEYDOWN:
                 if game_over:
                     # Logique de redémarrage : seulement si le jeu est terminé
                     if event.key == pygame.K_SPACE:
                         main() # Redémarre le jeu en appelant main()
                         return
-                else:
-                    # Logique de déplacement : seulement si le jeu est en cours
+                elif model is None:
+                    # Contrôle clavier de secours, uniquement si aucun modèle
+                    # entraîné n'a été trouvé (cf. message ci-dessus).
                     if event.key == pygame.K_UP:
                         snake.set_direction(UP)
                     elif event.key == pygame.K_DOWN:
@@ -237,12 +409,16 @@ def main():
                         snake.set_direction(LEFT)
                     elif event.key == pygame.K_RIGHT:
                         snake.set_direction(RIGHT)
-        
+
         # 2. Logique de Mise à Jour du Jeu
         if not game_over and not victory:
             # Le serpent se déplace à la vitesse définie
             move_counter += 1
             if move_counter >= GAME_SPEED // 10: # Déplace le serpent à un rythme constant
+                if model is not None:
+                    # Décision du DQN : remplace le clavier, exactement
+                    # comme à l'évaluation finale de snake-ia.py.
+                    snake.set_direction(choose_action(model, snake, apple))
                 snake.move()
                 move_counter = 0
 
