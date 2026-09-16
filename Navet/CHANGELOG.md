@@ -27,3 +27,69 @@
   - `model_fix4_best.pth` : **mean 33.40**, **max 61**, pas/pomme 11.50
 - Progression ablations (éval eps=0) : Baseline 23.92 -> Fix1+2 (target+eps) 25.58 -> Fix3 (+gamma) 29.42 -> Fix4 (+truncation+coût-0.01) **33.40 (max 61)**.
 - Anti-S validé : `pas/pomme` reste à ~11.5 (bien loin des 225 de la grille). L'agent fonce sur la pomme au plus court sans serpentiner.
+
+## 2026-09-16 21:04 — Visualisation : `play_visual.py`
+- Quoi : rendu pygame du socle (tête orange / corps vert / pomme rouge, panneau score-remplissage-temps, `GAME_SPEED=5` par défaut) qui fait jouer un `.pth`. Réutilise `SnakeGame` et `Agent.get_state` tels quels, aucune règle redupliquée. Contrôles : Espace pause, ↑/↓ vitesse, Échap quitter. Affiche la décision du réseau (`Q: tout droit / droite / gauche`).
+- Contrôle d'intégrité : sur seed 999, les 3 premières parties donnent score/steps/cause **identiques** à `evaluate.py` (35/404, 16/196, 48/638, toutes `corps`). Ce qui s'affiche est ce que mesure l'éval.
+- Pourquoi : les CSV donnent le score, pas le comportement. Ajouter l'œil humain sur la politique apprise.
+
+## 2026-09-16 21:10 — Diagnostic : le serpent est aveugle au tore, pas timide
+- Observation humaine via la visu : « il traverse très peu les murs alors que c'est la mécanique intéressante ».
+- Mesure (`diag_wrap.py`, model_fix4_best, 30 parties / 12280 pas / 1052 pommes) :
+  - wraps réels : **1.0 %** des pas
+  - situations où le chemin court passe par un mur : **26.8 %** des pas
+  - ... dont l'état 11 bits pointe **à l'opposé** : **100.0 %** de ces cas
+- Cause : les bits pomme comparaient des coordonnées brutes (`apple[0] < head[0]`). Tête en x=1, pomme en x=13 → l'état dit « à droite » alors que le chemin court fait 3 cases à gauche en traversant le mur.
+- Conséquence méthodo : un training plus long n'aurait rien donné, on aurait entraîné plus longtemps sur une entrée qui ment. La visu a trouvé en une partie ce que 2000 parties de training n'avaient pas révélé.
+
+## 2026-09-16 21:15 — Fix 5/5 : bits pomme en distance torique
+- Quoi : `dx = (apple[0]-head[0]) % GRID_SIZE`, `food_right = dx < GRID_SIZE-dx` (idem y). Flag `--torus-food` sur `train.py`, `evaluate.py`, `play_visual.py`, `diag_wrap.py`.
+- Défaut `False` : les modèles ≤ fix4 restent rejouables à l'identique (l'état doit matcher l'entraînement, sinon on évalue un modèle avec une entrée qu'il n'a jamais vue).
+- Résultat : en attente du run 20k.
+
+## 2026-09-16 21:20 — `train_parallel.py` : N seeds en parallèle
+- Quoi : lance N `train.py` en processus séparés, `OMP_NUM_THREADS=1` chacun, puis résume last-10 % et **écart-type inter-seed**.
+- Choix : parallélisme **entre** runs, pas dedans. Le réseau 11-256-3 ne sature pas un cœur, donc multi-worker sur un run ne gagnerait presque rien ; ce qui coûte c'est le nombre d'épisodes joués. Bonus : nos comparaisons de fixes étaient mono-seed, on ne savait pas si un écart était du signal ou du bruit — maintenant si.
+- Mesure : ~790 épisodes/min par run une fois lancé, 8 runs simultanés sur 10 cœurs à ~100% CPU chacun. 20k épisodes ≈ 25 min en parallèle, contre ~3 h 20 en séquentiel. (Première estimation à 290/min fausse : mesurée sur la 1re minute, qui incluait l'import torch.)
+
+## 2026-09-16 21:22 — Runs longs lancés (en cours)
+- `fix5` : 5 seeds × 20000 épisodes, `--torus-food`, gamma 0.97, eps-decay 2000, eps-min 0.02, truncated, step -0.01.
+- `ctrl20k` : 3 seeds × 20000 épisodes, **sans** `--torus-food`, tout le reste identique.
+- Pourquoi le contrôle : durée et fix changent en même temps. Sans ctrl20k on ne pourrait pas dire lequel des deux a produit le gain.
+- À mesurer à l'arrivée : éval eps=0 50 parties, et surtout `diag_wrap.py` — le taux de wrap doit décoller du 1.0 % si le fix mord.
+
+## 2026-09-16 21:20 — Arrêt des runs à mi-parcours + éval honnête
+- Runs stoppés à ~8600/20000 épisodes (fix5) et ~8000/20000 (ctrl20k) sur demande. Les `_best.pth` sont intacts (sauvegardés à chaque record).
+- **Correction d'un bug de mesure dans `diag_wrap.py`** : le compteur « état pointe à l'opposé » était calculé sur les coordonnées brutes *quel que soit* le modèle, donc il affichait 100 % même pour un modèle torus-food dont l'entrée est correcte. Il dépend maintenant de `--torus-food`. Les 100 % du diagnostic de 20:59 restent valides (ils portaient bien sur fix4, sans le flag).
+- **Wrap réel, fix4 vs fix5 s4** (10 parties) : 1.2 % → **7.1 %** des pas. Pas/pomme 12.1 → **8.8**. Le fix mord sur le comportement.
+- **Éval eps=0, 50 parties** :
+  - fix5 : s1 **38.9** (max 67), s2 23.9, s3 29.6 (max 72), s4 26.0, s5 15.4 → mean **26.8**, écart-type **7.7**
+  - ctrl20k : s1 27.8, s2 22.6, s3 34.0 → mean **28.1**, écart-type **4.7**
+  - rappel fix4 (2000 ép) : 33.4 (max 61)
+- **Conclusion honnête : l'écart fix5 vs contrôle (-1.4) est plus petit que le bruit inter-seed (~7.7). Sur n=5 vs n=3, les deux sont indistinguables en score.** Le `38.9` de s1 est un tirage favorable, pas une victoire démontrée.
+- Ce que le fix change de façon nette et reproductible : le **comportement** (wrap ×6, pas/pomme -27 %). Ce que le fix ne démontre pas encore : un gain de **score**.
+- Leçon méthodo : sans les 5 seeds + le contrôle, on aurait publié « 38.9, record battu ». C'est précisément le piège que les runs mono-seed des étapes 1-4 nous tendaient.
+- Alerte : fix5 s5 a un pas/pomme de **138** (contre ~9-12 ailleurs) — il tourne en rond et survit par famine tronquée. Le `-0.01`/pas ne suffit pas toujours à l'en dissuader.
+
+## 2026-09-16 21:22 — Fix 6/6 : état enrichi (flood-fill) — la vraie cause du plafond
+- **Diagnostic décisif** : en éval, **50 morts sur 50 sont `corps`**. Zéro famine, zéro autre cause. Les 3 bits de danger ne voient qu'**une case** devant ; à 70 pommes le serpent fait 73 cases et entre dans des poches sans issue qu'il ne peut pas voir.
+- Quoi : état 11 → **16 bits**, flag `--rich-state`. Ajoute par direction l'**espace libre atteignable** (BFS borné à `2*len(body)`, normalisé), la **distance à la queue** et la **longueur relative**. Réseau `Linear_QNet(16,256,3)`.
+- Coût : 12 µs/appel contre 2 µs (négligeable devant le pas d'optim torch).
+- Défaut `False` : tous les modèles ≤ fix5 restent évaluables et rejouables.
+- Contrôle de démarrage (1500 ép) : fix6 3.26 vs fix5 3.46 au **même stade** — courbes superposées, pas de régression. (J'avais d'abord cru à un ralentissement en comparant au 17 de fix5, qui était mesuré à 5000 ép, pas 1500.)
+- Run lancé : 5 seeds × 20000 épisodes, `--torus-food --rich-state`.
+
+## 2026-09-16 21:24 — Temps par score (pour le rendu)
+- Demande : fournir le temps associé à chaque score.
+- Choix de la métrique : **temps de jeu = `steps / GAME_SPEED`**, la durée réelle de la partie à la clock du socle (5 FPS). C'est ce que voit le prof, et c'est indépendant de la vitesse de notre machine. Le temps CPU est loggé à part (`temps_cpu_ms`), il mesure notre agent, pas la partie.
+- `evaluate.py` : colonnes `temps_jeu_s`, `sec_par_pomme`, `temps_cpu_ms` + résumé imprimé (score mean/max/min, temps mean/max, s/pomme, meilleure partie, cpu/partie).
+- `watch_training.py` : affiche « record en Xs de jeu ».
+- `play_visual.py` : le panneau affiche le **temps de jeu** (steps/5) et non le temps mur, donc le chiffre reste juste même en accéléré (`--speed 40`).
+- `bilan.py` : tableau récapitulatif multi-modèles score + temps pour le rendu.
+- Exemple (`model_fix5_s1_best`, 30 parties) : score moy **39.8**, max **67**, temps moy **102 s**, temps du record **206 s**, **2.56 s/pomme**, 15 ms CPU/partie.
+
+## 2026-09-16 21:26 — Réduction à 3 runs parallèles
+- Quoi : `kill` des seeds 4 et 5 du run fix6 pour alléger la machine. 3 runs restants (seeds 1, 2, 3), 7 cœurs sur 10 libérés.
+- Choix des seeds : les 5 étaient à égalité (~1480 épisodes), donc j'ai gardé les **numéros les plus bas**, pas les mieux classées. Choisir après coup les seeds qui performent le mieux serait exactement le biais de sélection qu'on dénonce depuis 21:25.
+- Fichiers partiels des seeds 4-5 déplacés dans `results/interrompus/` pour ne pas polluer le bilan.
+- **Conséquence à déclarer au prof** : n=3 au lieu de 5 pour fix6. L'écart-type inter-seed reste calculable mais sur 3 points seulement — moins fiable que les 5 de fix5. À garder en tête en comparant fix6 et fix5.

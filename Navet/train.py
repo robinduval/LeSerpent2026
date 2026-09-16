@@ -39,6 +39,8 @@ def main():
     ap.add_argument("--step-reward", type=float, default=0.1, help="Fix 4/4 groupe : +0.1 flaw vs -0.01 anti-S")
     ap.add_argument("--hunger-mode", type=str, default="loeber", choices=["loeber", "truncated"], help="Fix 4/4 groupe")
     ap.add_argument("--hunger-k", type=float, default=2.0, help="limite faim = hunger_k * cases_libres")
+    ap.add_argument("--torus-food", action="store_true", help="Fix 5/5 : bits pomme = plus court chemin torique")
+    ap.add_argument("--rich-state", action="store_true", help="Fix 6/6 : etat 16 bits (flood-fill, queue, longueur)")
     args = ap.parse_args()
 
     with open(args.config) as f:
@@ -49,7 +51,8 @@ def main():
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     gamma = args.gamma if args.gamma is not None else cfg.get("gamma", 0.9)
     agent = Agent(gamma=gamma, use_target=args.use_target,
-                  eps_mode=args.eps_mode, eps_min=args.eps_min, eps_decay=args.eps_decay)
+                  eps_mode=args.eps_mode, eps_min=args.eps_min, eps_decay=args.eps_decay,
+                  torus_food=args.torus_food, rich_state=args.rich_state)
 
     try:
         import torch
