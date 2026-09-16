@@ -1,0 +1,16 @@
+{"model_id": "candidate_000200000:345dc715390b", "configuration_id": "candidate_000200000:345dc715390b", "seed": 890002, "official_score": 73, "official_time_seconds": 407.077841758728, "time_convention": "wall time at terminal event or external cutoff; source display never freezes", "rl_return": 633.6500000000012, "apples": 73, "steps": 2000, "completed": false, "termination_reason": "external_step_limit", "final_length": 76, "decision_latency": 0.0006005167594921658, "decision_latency_p95": 0.0005817131504954887, "evaluation_step_budget": 2000, "clock_hz": 5, "observed_move_hz": 4.910097193979959, "training_transitions": 200000, "training_updates": 24985, "training_wall_time": 30.225573749999967, "demonstration_cost": {"transitions": 6000, "supervised_updates": 500, "wall_seconds": 1.0912658329998521}, "simulation_cost": 0, "policy_kind": "rl_with_safety_filter", "safety_filter": "rewired-cycle-v1", "filter_overrides": 0, "learned_choice_states": 3, "classability": "not established for externally interrupted games"}
+{
+  "episodes": 1,
+  "score_mean": 73,
+  "score_median": 73,
+  "score_max": 73,
+  "score_min": 73,
+  "score_std": 0.0,
+  "completed": 0,
+  "completion_rate": 0.0,
+  "collision_rate": 0.0,
+  "external_cutoffs": 1,
+  "target_223_rate": 0.0,
+  "terminal_time_mean_by_exact_score": {},
+  "terminal_time_count_by_exact_score": {}
+}

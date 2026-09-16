@@ -1,0 +1,21 @@
+{
+  "episodes": 3,
+  "score_mean": 37,
+  "score_median": 42,
+  "score_max": 42,
+  "score_min": 27,
+  "score_std": 7.0710678118654755,
+  "completed": 0,
+  "completion_rate": 0.0,
+  "collision_rate": 0.6666666666666666,
+  "external_cutoffs": 1,
+  "target_223_rate": 0.0,
+  "terminal_time_mean_by_exact_score": {
+    "27": 64.24482417106628,
+    "42": 100.17254996299744
+  },
+  "terminal_time_count_by_exact_score": {
+    "27": 1,
+    "42": 1
+  }
+}

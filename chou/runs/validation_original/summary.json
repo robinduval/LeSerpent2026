@@ -1,0 +1,15 @@
+{
+  "episodes": 3,
+  "score_mean": 0,
+  "score_median": 0,
+  "score_max": 0,
+  "score_min": 0,
+  "score_std": 0.0,
+  "completed": 0,
+  "completion_rate": 0.0,
+  "collision_rate": 0.0,
+  "external_cutoffs": 3,
+  "target_223_rate": 0.0,
+  "terminal_time_mean_by_exact_score": {},
+  "terminal_time_count_by_exact_score": {}
+}

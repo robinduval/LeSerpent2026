@@ -1,0 +1,8 @@
+{
+  "command": "python chou/serpent-algo.py",
+  "cwd": "/Users/hamza/Desktop/SIGL/SNKAE/LeSerpent2026",
+  "python": "3.13.15",
+  "checkpoint_sha256_before": "3b3a0bf2cfb1e07e0c796a4439dec853d4e9519c1571f4876f991f31aaa93374",
+  "started_at": "2026-09-16T21:06:18+0200",
+  "gui_backend": "native macOS SDL; no dummy driver set"
+}
