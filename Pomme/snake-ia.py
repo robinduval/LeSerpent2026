@@ -11,11 +11,11 @@ Organisation :
     + train() / evaluate() / play()
 
 Lancement (depuis le dossier Pomme) :
-    python snake-IA.py            -> démonstration avec le meilleur modèle (model/best_eval.pth)
-    python snake-IA.py --play     -> idem
-    python snake-IA.py --train    -> entraînement (reprend model/latest.pth s'il existe)
-    python snake-IA.py --new      -> nouvel entraînement depuis zéro
-    python snake-IA.py --headless -> entraînement sans fenêtre ni clock (rapide)
+    python snake-ia.py            -> démonstration avec le meilleur modèle (model/best_eval.pth)
+    python snake-ia.py --play     -> idem
+    python snake-ia.py --train    -> entraînement (reprend model/latest.pth s'il existe)
+    python snake-ia.py --new      -> nouvel entraînement depuis zéro
+    python snake-ia.py --headless -> entraînement sans fenêtre ni clock (rapide)
 """
 
 import argparse
@@ -729,7 +729,7 @@ def train(new=False, headless=False):
         if old_version != STATE_VERSION:
             # Ne pas mélanger un réseau entraîné avec l'ancien sens des entrées "pomme"
             print("model/latest.pth a été entraîné avec l'ancien état (pomme sans wrap-around).")
-            print("Reprise refusée : lance python snake-IA.py --new (les anciens fichiers seront archivés, pas supprimés).")
+            print("Reprise refusée : lance python snake-ia.py --new (les anciens fichiers seront archivés, pas supprimés).")
             return
         stats = load_checkpoint("latest.pth", agent)
         print(f"Reprise de model/latest.pth : partie {agent.n_games}, {agent.steps} pas, "
@@ -848,7 +848,7 @@ def play():
         if os.path.exists(model_path(name)):
             break
     else:
-        print("Aucun modèle dans Pomme/model/ : lance d'abord python snake-IA.py --train (ou --headless)")
+        print("Aucun modèle dans Pomme/model/ : lance d'abord python snake-ia.py --train (ou --headless)")
         return
     if name != "best_eval.pth":
         print(f"best_eval.pth introuvable, utilisation de {name}")
