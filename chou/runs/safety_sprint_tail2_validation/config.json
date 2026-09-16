@@ -1,0 +1,12 @@
+{
+  "seeds": [
+    880001,
+    880002,
+    880003
+  ],
+  "max_steps": 4500,
+  "clock_hz": 5,
+  "purpose": "frozen checkpoint hybrid validation; no training during evaluation",
+  "checkpoint_sha256": "c2faee5d19f968d5d62ff1e5b6678c91d5476d9225ab8836e2668a7377e6e80c",
+  "started_at": "2026-09-16T21:18:19+0200"
+}

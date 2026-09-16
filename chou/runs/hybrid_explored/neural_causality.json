@@ -1,0 +1,30 @@
+{
+  "purpose": "matched-state functional causality test; not official 5Hz evaluation",
+  "checkpoint": "runs/hybrid_explored/candidate_000200000.pt",
+  "sha256": "345dc715390b592f6179448556da6a4a5a52ddbbeca0ee21d8ad3df8c5a7e721",
+  "seed": 43731,
+  "config": {
+    "hidden": 64,
+    "gamma": 0.97,
+    "lr": 0.001,
+    "batch_size": 128,
+    "capacity": 40000,
+    "move_reward": -0.05,
+    "seed": 735,
+    "encoder": "cycle_action20",
+    "shield": "rewired-cycle-v1",
+    "optimize_free_arc": true,
+    "explore_attempts": 64
+  },
+  "same_features_and_same_mask_for_all_networks": true,
+  "counts": {
+    "states": 6752,
+    "multiple_safe_actions": 1,
+    "trained_vs_untrained_changed": 1,
+    "trained_vs_zero_changed": 1,
+    "unsafe_network_proposals_filtered": 4588
+  },
+  "completed_invariant": true,
+  "score_invariant": 223,
+  "diagnostic_wall_seconds": 0.6221192920002068
+}

@@ -1,0 +1,10 @@
+.venv/
+.uv-cache/
+.uv-python/
+.tools/
+__pycache__/
+.pytest_cache/
+*.pyc
+runs/pdf_audit/
+runs/*/resume.pt
+runs/report/.matplotlib/
