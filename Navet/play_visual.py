@@ -61,9 +61,11 @@ def draw_panel(surface, font, small, game, episode, episodes, elapsed, best, q_v
 
     surface.blit(font.render(f"Score: {game.score}", True, BLANC), (10, 12))
 
+    # remplissage au centre de la ligne du haut (entre score et temps)
     fill_rate = len(game.body) / (GRID_SIZE * GRID_SIZE) * 100
-    fill = small.render(f"Remplissage: {fill_rate:.1f}%", True, BLANC)
-    surface.blit(fill, (SCREEN_WIDTH // 2 - fill.get_width() // 2, 14))
+    fill = small.render(f"{fill_rate:.0f}% rempli", True, BLANC)
+    surface.blit(fill, (SCREEN_WIDTH // 2 - fill.get_width() // 2, 18))
+
 
     # temps de JEU (steps / GAME_SPEED), independant de --speed : c'est la duree
     # qu'aurait la partie a la clock du socle, donc le chiffre a donner au prof.
@@ -75,6 +77,8 @@ def draw_panel(surface, font, small, game, episode, episodes, elapsed, best, q_v
     # ligne du bas : contexte de la démo + décision du réseau
     left = small.render(f"Partie {episode}/{episodes}  best {best}", True, BLANC)
     surface.blit(left, (10, 48))
+
+
     if q_values is not None:
         labels = ("tout droit", "droite", "gauche")
         choice = max(range(3), key=lambda i: q_values[i])

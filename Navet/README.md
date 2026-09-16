@@ -29,3 +29,11 @@ Exemple :
 21:24 : Ajout temps par score pour le rendu, métrique = steps/GAME_SPEED donc durée à la clock du socle indépendante de notre machine, temps CPU loggé à part / evaluate.py colonnes temps_jeu_s sec_par_pomme temps_cpu_ms + bilan.py tableau multi-modèles.
 21:25 : Bilan fix5_s1 30p score moy 39.8 max 67 temps moy 102s temps du record 206s 2.56s/pomme 15ms CPU/partie.
 21:26 : Kill seeds 4 et 5 du run fix6 pour alléger le Mac, 3 runs restants seeds 1-3 / Choix des seeds les plus basses et non des mieux classées car les 5 étaient à égalité 1480ép, sélectionner après coup aurait biaisé le résultat / Conséquence n=3 au lieu de 5 donc écart-type inter-seed moins fiable, à dire au prof.
+21:54 : Génération courbes.py 6 figures PNG depuis results/*.csv, install matplotlib manquant / Choix moyenne glissante 200 sur les runs car score train bruité par eps>0, et points par seed + barre d'erreur sur les évals.
+21:55 : Correction 2 défauts de lisibilité repérés à l'inspection des PNG, note qui chevauchait la barre d'erreur fig3 et annotation sur le titre fig1 / Ajout annotation piège de lecture baseline monte vite car eps=0 dès 80 mais plafonne.
+21:56 : Constat fig2 fix6 (bleu) ~42 vs fix5 et contrôle ~22-24, 3 seeds resserrées, max 100/99/101 contre 72 avant / Hypothèse contrairement à fix5 l'écart dépasse largement le bruit inter-seed, le flood-fill a mordu.
+22:10 : Arrêt fix6 à 18333/20000 sur demande / Eval eps=0 50p s1 mean88.1 max119 s2 86.0 max116 s3 85.5 max108.
+22:12 : Constat fix6 mean 86.6 écart-type inter-seed 1.1 vs contrôle 28.1 soit +58.4 pour un bruit de 4.7 / Réponse écart 12x le bruit, premier fix concluant statistiquement contrairement à fix5 qui était dans le bruit.
+22:13 : Régénération des 6 figures avec fix6 + main.py lance désormais model_fix6_s1_best avec --torus-food --rich-state, flags déclarés en un seul endroit pour éviter le piège modèle-joué-avec-le-mauvais-état.
+22:14 : Fix chevauchement panneau pygame remplissage/temps repéré sur capture à 70 pommes / Constat les scores à 3 chiffres ne rentraient plus dans la mise en page prévue pour 2.
+22:15 : Constat fix6 meurt encore à 100% par morsure comme fix4 / Hypothèse le flood-fill repousse le plafond de 33 à 88 pommes mais n'élimine pas la cause, prochaine piste serait un horizon plus long ou un état qui voit la queue accessible.

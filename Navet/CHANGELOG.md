@@ -93,3 +93,39 @@
 - Choix des seeds : les 5 étaient à égalité (~1480 épisodes), donc j'ai gardé les **numéros les plus bas**, pas les mieux classées. Choisir après coup les seeds qui performent le mieux serait exactement le biais de sélection qu'on dénonce depuis 21:25.
 - Fichiers partiels des seeds 4-5 déplacés dans `results/interrompus/` pour ne pas polluer le bilan.
 - **Conséquence à déclarer au prof** : n=3 au lieu de 5 pour fix6. L'écart-type inter-seed reste calculable mais sur 3 points seulement — moins fiable que les 5 de fix5. À garder en tête en comparant fix6 et fix5.
+
+## 2026-09-16 21:54 — `courbes.py` : figures du rendu
+- Quoi : 6 PNG dans `results/figures/` générés depuis `results/*.csv`. `matplotlib` était dans `requirements.txt` mais pas installé.
+- Choix de lecture : **moyenne glissante 200** sur les runs d'entraînement (le score brut y est bruité par l'exploration, eps>0, la courbe brute ne dit rien) ; sur les évals eps=0, **un point noir par seed** + barre d'erreur = écart-type inter-seed.
+- Figures : 1 progression étapes 1-4 · 2 runs multi-seed (variance) · 3 comparaison éval eps=0 · 4 score vs temps de jeu · 5 causes de mort · 6 exploitation du tore.
+- Deux défauts de lisibilité corrigés après inspection visuelle des PNG (une note chevauchait la barre d'erreur en fig. 3, une annotation passait sur le titre en fig. 1). Générer sans erreur ne garantit pas lisible.
+- Annotation ajoutée en fig. 1 : la baseline monte **plus vite** que les fixes, ce qui se lit à l'envers sans explication — c'est l'effet eps=0 dès 80 parties (elle exploite un optimum local et plafonne), alors que les fixes explorent, scorent moins en train et gagnent en éval.
+- Fig. 3 : Fix6 absent (éval pas encore faite, run en cours).
+
+## 2026-09-16 21:56 — Fix 6 à 14000/20000 : l'écart dépasse le bruit
+- `last500` par seed : s1 **44.0**, s2 **41.7**, s3 **44.1**. **Max 100 / 99 / 101** (ancien record toutes étapes confondues : 72).
+- Les 3 seeds sont resserrées (~2.4 points d'écart) alors que fix5 vs contrôle étaient indistinguables (écart 1.4 pour un bruit de 7.7).
+- **C'est la première fois qu'un fix produit un écart clairement supérieur au bruit inter-seed.** Le diagnostic « 50 morts sur 50 = morsure, l'état ne voit qu'une case » était le bon.
+- À confirmer en éval eps=0 en fin de run (le score train reste bruité par eps, ici ~0.02).
+
+## 2026-09-16 22:12 — Fix 6 : résultat final (run arrêté à 18333/20000)
+- **Éval eps=0, 50 parties par seed** :
+
+| modèle | score moy | max | écart-type intra | temps moy | temps du record | s/pomme |
+|---|---|---|---|---|---|---|
+| `model_fix6_s1_best.pth` | **88.1** | **119** | 13.4 | 253s | 380s | 2.88s |
+| `model_fix6_s2_best.pth` | 86.0 | 116 | 14.5 | 237s | 318s | 2.76s |
+| `model_fix6_s3_best.pth` | 85.5 | 108 | 13.6 | 234s | 310s | 2.74s |
+
+- **Inter-seed : mean 86.6, écart-type 1.1** (n=3).
+- Comparaison : contrôle 28.1 (±4.7), fix5 26.8 (±7.7), fix4 33.4, baseline 23.9.
+- **Écart fix6 vs contrôle : +58.4 pour un bruit de 4.7, soit 12× le bruit.** C'est le **premier fix statistiquement concluant** de la soirée : fix1 à fix5 étaient soit mono-seed (non mesurables), soit dans le bruit (fix5).
+- Progression complète en éval eps=0 : 23.9 → 25.6 → 29.4 → 33.4 → (fix5 26.8, dans le bruit) → **86.6**.
+- **Réserve honnête** : fix6 meurt encore à **100 % par morsure**, comme fix4. Le flood-fill repousse le plafond (33 → 88 pommes) mais n'élimine pas la cause. La prochaine piste serait un horizon plus long (gamma) ou un état qui voit si la queue reste accessible.
+
+## 2026-09-16 22:13 — `main.py` : point d'entrée du rendu
+- `python3 main.py` lance `model_fix6_s1_best.pth` avec `--torus-food --rich-state` en visualisation pygame.
+- Les flags d'état sont déclarés **en un seul endroit** (`BEST_MODEL` / `BEST_FLAGS`) : un modèle doit être joué avec l'état sur lequel il a été entraîné. C'est exactement le piège de 21:14, où `main.py` sans arguments affichait fix4 et nous a fait croire que fix5 restait timide.
+- Les arguments passés en ligne de commande restent prioritaires (`--speed`, `--episodes`, `--model`).
+- Figures régénérées avec fix6 (`results/figures/`, 6 PNG).
+- Panneau pygame corrigé : à 3 chiffres de score, « Remplissage » et « Temps jeu » se chevauchaient (mise en page prévue pour 2 chiffres). Repéré sur une capture à 70 pommes, pas dans le code.
