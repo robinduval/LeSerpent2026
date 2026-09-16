@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 
 from .model import build_model, resolve_device
-from .replay_buffer import ReplayBuffer
+from .prioritized_replay import build_replay_buffer
 from .rules import N_ACTIONS
 
 # Valeur utilisée pour éteindre une action interdite avant un argmax.
@@ -36,13 +36,16 @@ class Agent:
         self.optimizer = torch.optim.Adam(
             self.policy_net.parameters(), lr=config.learning_rate
         )
+        # Réduction manuelle : PER doit pondérer chaque transition par son poids
+        # d'importance avant de moyenner.
         self.criterion = (
-            nn.SmoothL1Loss() if config.loss == "huber" else nn.MSELoss()
+            nn.SmoothL1Loss(reduction="none")
+            if config.loss == "huber"
+            else nn.MSELoss(reduction="none")
         )
 
-        self.memory = ReplayBuffer(
-            capacity=config.replay_capacity, seed=config.seed
-        )
+        # Mémoire uniforme, ou prioritaire si l'algorithme se termine par _per.
+        self.memory = build_replay_buffer(config)
         self._rng = np.random.default_rng(config.seed)
 
         self.episodes_done = 0
@@ -123,9 +126,13 @@ class Agent:
         if len(self.memory) < max(cfg.learning_starts, cfg.batch_size):
             return None
 
-        states, actions, rewards, next_states, dones, next_masks = self.memory.sample(
-            cfg.batch_size, device=self.device
-        )
+        batch = self.memory.sample(cfg.batch_size, device=self.device)
+        if cfg.uses_per:
+            (states, actions, rewards, next_states, dones, next_masks,
+             indices, weights) = batch
+        else:
+            states, actions, rewards, next_states, dones, next_masks = batch
+            indices, weights = None, None
 
         # Q(s, a) pour les actions réellement jouées.
         q_taken = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
@@ -146,7 +153,13 @@ class Agent:
 
             targets = rewards + cfg.gamma * next_value * (1.0 - dones)
 
-        loss = self.criterion(q_taken, targets)
+        per_sample_loss = self.criterion(q_taken, targets)
+        if weights is None:
+            loss = per_sample_loss.mean()
+        else:
+            # Les transitions sur-échantillonnées pèsent moins dans le gradient,
+            # ce qui corrige le biais introduit par le tirage prioritaire.
+            loss = (per_sample_loss * weights).mean()
 
         self.optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -155,6 +168,13 @@ class Agent:
                 self.policy_net.parameters(), cfg.gradient_clip
             )
         self.optimizer.step()
+
+        if indices is not None:
+            # Erreur TD APRÈS la mise à jour du réseau : c'est la priorité que
+            # méritera la transition au prochain tirage.
+            with torch.no_grad():
+                td_errors = (q_taken.detach() - targets).cpu().numpy()
+            self.memory.update_priorities(indices, td_errors)
 
         self.learn_steps += 1
         self._sync_target()

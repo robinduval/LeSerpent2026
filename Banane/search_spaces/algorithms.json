@@ -1,0 +1,20 @@
+{
+  "name": "round1_algorithmes",
+  "base": {
+    "episodes": 1200,
+    "eval_interval": 200,
+    "eval_episodes": 20,
+    "hidden_size": 256,
+    "batch_size": 256,
+    "learning_rate": 0.001,
+    "gamma": 0.95,
+    "epsilon_decay_episodes": 500,
+    "target_update_interval": 500,
+    "device": "cpu",
+    "checkpoint_every": 0,
+    "notes": "Round 1 : DQN vs Double DQN vs Dueling Double DQN, hyperparametres du cadrage, seeds et budget identiques."
+  },
+  "grid": {"algorithm": ["dqn", "ddqn", "dueling_ddqn"]},
+  "seeds": [0, 1, 2],
+  "workers": 4
+}

@@ -8,3 +8,5 @@ runs/
 checkpoints/
 replays/
 *.pt
+.claude/
+.headroom/

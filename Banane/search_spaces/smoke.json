@@ -1,0 +1,9 @@
+{
+  "name": "smoke",
+  "base": {"episodes": 40, "eval_interval": 20, "eval_episodes": 4,
+           "hidden_size": 32, "batch_size": 16, "learning_starts": 16,
+           "device": "cpu", "checkpoint_every": 0},
+  "grid": {"algorithm": ["dqn", "ddqn"]},
+  "seeds": [0, 1],
+  "workers": 4
+}
