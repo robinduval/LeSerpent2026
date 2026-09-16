@@ -2,9 +2,7 @@
 
 Différences assumées avec `serpent-algo.py`, et pourquoi :
 
-1. Plus de modulo dans le déplacement. Le socle transformait la grille en tore,
-   ce qui rendait `check_wall_collision()` mathématiquement inatteignable
-   (voir `tests/test_legacy_wall_bug.py`). Sortir de la grille tue désormais.
+1. Plateau torique, comme le modulo du socle : traverser un bord ne tue pas.
 2. Aucun import Pygame : l'entraînement headless ne doit rien afficher.
    Le rendu vit dans `render.py` et consomme les snapshots produits ici.
 3. RNG locale (`random.Random(seed)`) au lieu du `random` global, pour que
@@ -46,12 +44,21 @@ class StepResult:
     """Résultat d'un pas de simulation."""
 
     reward: float
-    done: bool
     score: int
+    terminated: bool = False
     won: bool = False
     ate: bool = False
     truncated: bool = False
     info: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.terminated and self.truncated:
+            raise ValueError("terminated et truncated sont mutuellement exclusifs")
+
+    @property
+    def done(self):
+        """Compatibilité : fin de collecte, pas masque de bootstrap RL."""
+        return self.terminated or self.truncated
 
 
 class SnakeGame:
@@ -75,14 +82,18 @@ class SnakeGame:
             reward_profile: barème de récompense (voir `RewardProfile`).
             max_steps_without_food: garde-fou EXPÉRIMENTAL contre les boucles
                 infinies. `None` par défaut : la règle officielle ne connaît
-                que trois fins de partie (mur, corps, victoire). Si une valeur
+                que deux fins de partie (corps, victoire). Si une valeur
                 est fournie, l'épisode est marqué `truncated` et non `won` ;
                 cette troncature doit apparaître dans la configuration et dans
                 le rapport d'expérience.
         """
         self.seed = seed
         self.reward_profile = reward_profile
-        self.max_steps_without_food = max_steps_without_food
+        if max_steps_without_food is not None and (
+            type(max_steps_without_food) is not int or max_steps_without_food < 0
+        ):
+            raise ValueError("max_steps_without_food doit être un entier positif, 0 ou None")
+        self.max_steps_without_food = max_steps_without_food or None
         self._rng = random.Random(seed)
         self.reset()
 
@@ -104,7 +115,8 @@ class SnakeGame:
         self.score = 0
         self.steps = 0
         self.steps_since_food = 0
-        self.done = False
+        self.terminated = False
+        self.truncated = False
         self.won = False
         self._grow_pending = False
         self.food = self._place_food()
@@ -113,6 +125,11 @@ class SnakeGame:
     @property
     def head(self):
         return self.body[0]
+
+    @property
+    def done(self):
+        """Vraie fin du jeu OU fin expérimentale de collecte."""
+        return self.terminated or self.truncated
 
     # ------------------------------------------------------------------
     # Pomme
@@ -139,20 +156,22 @@ class SnakeGame:
     # Collisions
     # ------------------------------------------------------------------
 
-    def hits_wall(self, point):
-        """Vrai si `point` est hors de la grille. Sans modulo, cette fois."""
-        x, y = point
-        return x < 0 or x >= rules.GRID_SIZE or y < 0 or y >= rules.GRID_SIZE
-
     def hits_body(self, point, body=None):
         """Vrai si `point` touche le corps (hors tête, comme dans le socle)."""
         body = self.body if body is None else body
         return point in body[1:]
 
     def is_collision(self, point=None):
-        """Collision murale ou corporelle. Sert aussi au calcul des dangers."""
-        point = self.head if point is None else point
-        return self.hits_wall(point) or self.hits_body(point)
+        """Collision actuelle, ou prédiction corporelle du prochain pas.
+
+        Un point proposé est ramené sur le tore. La queue est libérée avant
+        le test de collision, sauf si une croissance est déjà en attente.
+        """
+        if point is None:
+            return self.hits_body(self.head)
+        point = (point[0] % rules.GRID_SIZE, point[1] % rules.GRID_SIZE)
+        occupied = self.body if self._grow_pending else self.body[:-1]
+        return point in occupied
 
     # ------------------------------------------------------------------
     # Actions
@@ -187,26 +206,16 @@ class SnakeGame:
         if new_direction != rules.opposite(self.direction):
             self.direction = new_direction
 
-        # 2. Nouvelle tête, SANS modulo : c'est la correction du bug du socle.
+        # 2. Nouvelle tête sur le plateau torique officiel.
         new_head = (
-            self.head[0] + self.direction[0],
-            self.head[1] + self.direction[1],
+            (self.head[0] + self.direction[0]) % rules.GRID_SIZE,
+            (self.head[1] + self.direction[1]) % rules.GRID_SIZE,
         )
 
         self.steps += 1
         self.steps_since_food += 1
 
-        # 3. Le mur tue avant même d'avoir à bouger le corps.
-        if self.hits_wall(new_head):
-            self.done = True
-            return StepResult(
-                reward=self.reward_profile.death,
-                done=True,
-                score=self.score,
-                info={"cause": "wall"},
-            )
-
-        # 4. Avance le corps. On applique l'ordre du socle : insertion de la
+        # 3. Avance le corps. On applique l'ordre du socle : insertion de la
         #    tête, puis retrait de la queue si le serpent ne grandit pas. La
         #    case libérée par la queue est donc jouable, ce qui est correct.
         self.body.insert(0, new_head)
@@ -215,17 +224,17 @@ class SnakeGame:
         else:
             self.body.pop()
 
-        # 5. Auto-morsure.
+        # 4. Auto-morsure.
         if self.hits_body(new_head):
-            self.done = True
+            self.terminated = True
             return StepResult(
                 reward=self.reward_profile.death,
-                done=True,
+                terminated=True,
                 score=self.score,
                 info={"cause": "self"},
             )
 
-        # 6. Pomme.
+        # 5. Pomme.
         if new_head == self.food:
             self.score += 1
             self._grow_pending = True
@@ -246,36 +255,35 @@ class SnakeGame:
 
             self.food = None if grid_is_full else self._place_food()
             if self.food is None:
-                self.done = True
+                self.terminated = True
                 self.won = True
                 reward += self.reward_profile.victory
                 return StepResult(
                     reward=reward,
-                    done=True,
+                    terminated=True,
                     score=self.score,
                     won=True,
                     ate=True,
                     info={"cause": "victory"},
                 )
-            return StepResult(reward=reward, done=False, score=self.score, ate=True)
+            return StepResult(reward=reward, score=self.score, ate=True)
 
-        # 7. Déplacement normal.
+        # 6. Déplacement normal.
         if (
             self.max_steps_without_food is not None
             and self.steps_since_food >= self.max_steps_without_food
         ):
             # Troncature expérimentale, explicitement distincte d'une défaite.
-            self.done = True
+            self.truncated = True
             return StepResult(
                 reward=self.reward_profile.step,
-                done=True,
                 score=self.score,
                 truncated=True,
                 info={"cause": "truncated"},
             )
 
         return StepResult(
-            reward=self.reward_profile.step, done=False, score=self.score
+            reward=self.reward_profile.step, score=self.score
         )
 
     # ------------------------------------------------------------------
@@ -294,4 +302,9 @@ class SnakeGame:
             "score": self.score,
             "steps": self.steps,
             "done": self.done,
+            "terminated": self.terminated,
+            "truncated": self.truncated,
+            "cause": "truncated" if self.truncated else (
+                "victory" if self.won else "self" if self.terminated else None
+            ),
         }

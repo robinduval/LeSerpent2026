@@ -13,12 +13,16 @@ pendant l'entraînement, avec exploration, ne prouve rien.
 
 import statistics
 import time
+from collections import Counter
 
-from .game import COURSE_REWARDS, SnakeGame
+from .diagnostics import EpisodeDiagnostics, aggregate_episode_metrics
+from .game import SnakeGame
+from .rules import RULESET
 from .state import build_state
 
 
-def play_episode(agent, seed, record_frames=False, max_steps_without_food=None):
+def play_episode(agent, seed, record_frames=False, max_steps_without_food=None,
+                 long_without_food_threshold=100):
     """Joue une partie complète en mode greedy. Retourne un dictionnaire.
 
     Args:
@@ -33,10 +37,12 @@ def play_episode(agent, seed, record_frames=False, max_steps_without_food=None):
     frames = []
     decision_time = 0.0
     decisions = 0
+    diagnostics = EpisodeDiagnostics(game, long_without_food_threshold)
 
     while not game.done:
         state = build_state(game)
         mask = game.legal_action_mask()
+        legal_q = agent.q_values(state, mask)[mask] if hasattr(agent, "q_values") else None
 
         started = time.perf_counter()
         action = agent.act(state, mask=mask, greedy=True)
@@ -47,54 +53,74 @@ def play_episode(agent, seed, record_frames=False, max_steps_without_food=None):
             frames.append(game.snapshot(action=action))
 
         result = game.step(action)
+        next_state = build_state(game)
+        loss = agent.diagnostic_td_loss(state, action, result, next_state, game.legal_action_mask()) \
+            if hasattr(agent, "diagnostic_td_loss") else None
+        diagnostics.observe(game, result, state=next_state, q_values=legal_q, loss=loss)
 
     if record_frames:
         # Image finale : elle montre la position où la partie s'est terminée.
         frames.append(game.snapshot(action=None, reward=result.reward))
 
     return {
+        **diagnostics.summary(),
+        "ruleset": RULESET,
         "seed": seed,
+        "max_steps_without_food": max_steps_without_food,
         "score": game.score,
         "steps": game.steps,
         "won": game.won,
         "truncated": result.truncated,
+        "terminated": result.terminated,
         "cause": result.info.get("cause"),
         "mean_decision_seconds": decision_time / max(decisions, 1),
         "frames": frames,
+        "epsilon": 0.0,
+        "loss_kind": "frozen_one_step_td_diagnostic",
     }
 
 
-def evaluate(agent, seeds, record_best_frames=True, max_steps_without_food=None):
+def evaluate(agent, seeds, record_best_frames=True, max_steps_without_food=None,
+             long_without_food_threshold=100):
     """Évalue l'agent sur une liste de seeds et agrège les métriques.
 
-    Deux passes quand on veut le replay du meilleur épisode : une première
-    passe sans enregistrement, puis on rejoue la meilleure seed en
-    enregistrant. C'est déterministe (même seed, politique figée, epsilon nul),
-    donc la trajectoire obtenue est exactement celle qui a produit le score
-    mesuré, et on évite de garder en mémoire toutes les trajectoires du bloc.
+    Les frames sont capturées pendant la partie réellement mesurée. Seuls le
+    meilleur replay et l'exemple de stagnation courant sont conservés ; aucune
+    politique n'est réexécutée pour reconstruire un replay.
     """
-    episodes = [
-        play_episode(agent, seed, max_steps_without_food=max_steps_without_food)
-        for seed in seeds
-    ]
+    seeds = list(seeds)
+    episodes = []
+    best_replay = None
+    stagnation_replay = None
+    for seed in seeds:
+        episode = play_episode(agent, seed, record_frames=record_best_frames,
+                               max_steps_without_food=max_steps_without_food,
+                               long_without_food_threshold=long_without_food_threshold)
+        if record_best_frames:
+            if best_replay is None or (episode["score"], -episode["steps"]) > (
+                best_replay["score"], -best_replay["steps"]
+            ):
+                best_replay = episode
+            if episode["probable_cycle"] or episode["long_without_food"]:
+                if stagnation_replay is None or (
+                    episode["probable_cycle"], episode["longest_without_food"]
+                ) > (stagnation_replay["probable_cycle"], stagnation_replay["longest_without_food"]):
+                    stagnation_replay = episode
+        # Les métriques n'ont pas besoin de retenir toutes les frames.
+        episodes.append({key: value for key, value in episode.items() if key != "frames"})
     scores = [episode["score"] for episode in episodes]
     steps = [episode["steps"] for episode in episodes]
-
     best = max(episodes, key=lambda episode: (episode["score"], -episode["steps"]))
-    best_replay = None
-    if record_best_frames:
-        best_replay = play_episode(
-            agent,
-            best["seed"],
-            record_frames=True,
-            max_steps_without_food=max_steps_without_food,
-        )
-        assert best_replay["score"] == best["score"], (
-            "la rejouée doit reproduire le score mesuré ; sinon la politique "
-            "ou le jeu n'est pas déterministe"
-        )
 
     return {
+        "behavior_metrics": aggregate_episode_metrics(episodes),
+        "episode_metrics": [{key: value for key, value in episode.items() if key != "frames"}
+                            for episode in episodes],
+        "ruleset": RULESET,
+        "max_steps_without_food": max_steps_without_food,
+        "termination_counts": dict(Counter(episode["cause"] for episode in episodes
+                                          if episode["terminated"])),
+        "truncation_count": sum(episode["truncated"] for episode in episodes),
         "episodes": len(episodes),
         "seeds": list(seeds),
         "mean_score": statistics.fmean(scores),
@@ -111,12 +137,14 @@ def evaluate(agent, seeds, record_best_frames=True, max_steps_without_food=None)
         / len(episodes),
         "mean_steps": statistics.fmean(steps),
         "median_steps": statistics.median(steps),
+        "epsilon": 0.0,
         "mean_decision_seconds": statistics.fmean(
             episode["mean_decision_seconds"] for episode in episodes
         ),
         "scores": scores,
         "best_seed": best["seed"],
         "best_replay": best_replay,
+        "stagnation_replay": stagnation_replay,
     }
 
 
@@ -140,7 +168,9 @@ def is_better(candidate, incumbent):
     Ordre : score moyen, puis médiane, puis percentile 10, puis taux de
     victoire, puis variance plus faible. Le record isolé n'intervient jamais.
     """
-    if incumbent is None:
+    if candidate.get("ruleset") != RULESET:
+        return False
+    if incumbent is None or incumbent.get("ruleset") != RULESET:
         return True
     key = lambda block: (  # noqa: E731
         block["mean_score"],

@@ -52,7 +52,10 @@ def turn_left(direction):
 
 
 def _ahead(head, direction):
-    return (head[0] + direction[0], head[1] + direction[1])
+    return (
+        (head[0] + direction[0]) % rules.GRID_SIZE,
+        (head[1] + direction[1]) % rules.GRID_SIZE,
+    )
 
 
 def build_state(game):

@@ -7,8 +7,8 @@ Le lecteur rejoue une trajectoire enregistrée. Il ne fait pas rejouer le
 modèle : on voit donc exactement la partie qui a produit le score mesuré,
 image par image, et un replay s'ouvre sans PyTorch ni checkpoint.
 
-La vitesse accélérée est purement visuelle. Elle multiplie la cadence
-d'affichage et ne touche ni `GAME_SPEED` dans le moteur, ni le score, ni
+La cadence d'affichage est purement visuelle (60 FPS par défaut).
+Elle ne touche ni `GAME_SPEED` dans le moteur, ni le score, ni
 aucune métrique.
 """
 
@@ -87,10 +87,11 @@ def draw_board(surface, frame, font, header_lines):
 
 def replay_frames(
     replay,
-    speed_multiplier=8,
+    speed_multiplier=None,
     close_when_done=True,
     linger_seconds=1.5,
     max_real_seconds=None,
+    fps=60,
 ):
     """Rejoue une trajectoire enregistrée dans une fenêtre Pygame.
 
@@ -99,14 +100,19 @@ def replay_frames(
 
     Args:
         replay: dictionnaire chargé depuis un fichier de replay.
-        speed_multiplier: facteur de vitesse VISUELLE uniquement.
+        speed_multiplier: ancien facteur visuel explicite, conservé pour
+            compatibilité. S'il est fourni, il prend priorité sur fps.
+        fps: cadence graphique uniquement (défaut 60).
         max_real_seconds: coupe-circuit pour les tests automatisés.
     """
     frames = replay["frames"]
     if not frames:
         return 0
 
-    pygame.init()
+    if type(fps) is not int or fps < 1:
+        raise ValueError("fps doit être un entier >= 1")
+    pygame.display.init()
+    pygame.font.init()
     screen = pygame.display.set_mode((rules.SCREEN_WIDTH, rules.SCREEN_HEIGHT))
     pygame.display.set_caption(
         f"Replay {replay.get('run_id', '?')} — score {replay.get('score', '?')}"
@@ -116,8 +122,9 @@ def replay_frames(
 
     index = 0
     paused = False
-    multiplier = max(1, int(speed_multiplier))
+    frame_rate = fps if speed_multiplier is None else rules.GAME_SPEED * max(1, int(speed_multiplier))
     running = True
+    announced = False
     started = pygame.time.get_ticks()
 
     while running and index < len(frames):
@@ -132,9 +139,9 @@ def replay_frames(
                 elif event.key == pygame.K_RIGHT and paused:
                     index = min(index + 1, len(frames) - 1)
                 elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
-                    multiplier = min(multiplier + 1, 64)
+                    frame_rate = min(frame_rate + 10, 360)
                 elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
-                    multiplier = max(1, multiplier - 1)
+                    frame_rate = max(1, frame_rate - 10)
 
         frame = frames[index]
         draw_board(
@@ -147,18 +154,21 @@ def replay_frames(
                 f"Score {frame.get('score', 0)}   Record global "
                 f"{replay.get('record', replay.get('score', 0))}"
                 f"   Step {frame.get('steps', index)} / {len(frames) - 1}",
-                f"Vitesse visuelle x{multiplier}"
+                f"Vitesse visuelle {frame_rate} FPS"
                 + ("   [PAUSE]" if paused else "")
                 + "   espace pause, droite pas a pas, +/- vitesse, echap quitter",
             ],
         )
         pygame.display.flip()
+        if not announced:
+            print(f"REPLAY WINDOW OPEN | driver {pygame.display.get_driver()} | fps {frame_rate} | frames {len(frames)}",
+                  flush=True)
+            announced = True
 
         if not paused:
             index += 1
 
-        # La cadence officielle multipliée par le facteur visuel.
-        clock.tick(rules.GAME_SPEED * multiplier)
+        clock.tick(frame_rate)
 
         if (
             max_real_seconds is not None
@@ -170,6 +180,7 @@ def replay_frames(
     if running and close_when_done and linger_seconds:
         pygame.time.wait(int(linger_seconds * 1000))
     pygame.quit()
+    print(f"REPLAY WINDOW CLOSED | frames {played}/{len(frames)}", flush=True)
     return played
 
 
@@ -183,7 +194,9 @@ def main(argv=None):
         description="Rejoue une partie enregistrée, sans charger de modèle"
     )
     parser.add_argument("replay", help="chemin d'un fichier de replay JSON")
-    parser.add_argument("--speed", type=int, default=8, help="vitesse visuelle")
+    cadence = parser.add_mutually_exclusive_group()
+    cadence.add_argument("--fps", type=int, default=60, help="cadence graphique (défaut : 60 FPS)")
+    cadence.add_argument("--speed", type=int, help="ancien multiplicateur visuel (compatibilité)")
     parser.add_argument("--keep-open", action="store_true")
     args = parser.parse_args(argv)
 
@@ -195,6 +208,7 @@ def main(argv=None):
     replay_frames(
         replay,
         speed_multiplier=args.speed,
+        fps=args.fps,
         linger_seconds=3.0 if args.keep_open else 1.5,
     )
 

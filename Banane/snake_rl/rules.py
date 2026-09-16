@@ -12,6 +12,8 @@ Référence : `serpent-algo.py` (conservé intact à la racine du dossier Banane
 # Le commentaire du socle parle de 20x20, mais la constante vaut 15.
 # C'est la constante exécutable qui fait foi.
 GRID_SIZE = 15
+# Identité d'environnement : les anciens résultats sans ce tag sont legacy.
+RULESET = "snake-torus-v1"
 CELL_SIZE = 30
 GAME_SPEED = 5
 

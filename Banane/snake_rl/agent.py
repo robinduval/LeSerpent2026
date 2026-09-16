@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from .model import build_model, resolve_device
 from .prioritized_replay import build_replay_buffer
-from .rules import N_ACTIONS
+from .rules import N_ACTIONS, RULESET
 
 # Valeur utilisée pour éteindre une action interdite avant un argmax.
 # On n'utilise pas -inf : une ligne entièrement masquée produirait des NaN.
@@ -109,7 +109,28 @@ class Agent:
     # ------------------------------------------------------------------
 
     def remember(self, state, action, reward, next_state, done, next_mask=None):
+        """`done` est uniquement terminated, jamais une fin par time limit."""
         self.memory.push(state, action, reward, next_state, done, next_mask)
+
+    def diagnostic_td_loss(self, state, action, result, next_state, next_mask):
+        """Erreur TD d'une transition d'évaluation, sans gradient/apprentissage.
+
+        Ce diagnostic n'est pas la loss des batches d'entraînement. Les
+        troncatures conservent le bootstrap, comme dans learn().
+        """
+        with torch.no_grad():
+            current = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            following = torch.as_tensor(next_state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            mask = torch.as_tensor(next_mask, dtype=torch.bool, device=self.device).unsqueeze(0)
+            q_taken = self.policy_net(current)[0, action]
+            target_q = self.target_net(following)
+            if self.config.uses_double:
+                best = self.policy_net(following).masked_fill(~mask, MASKED_Q).argmax(dim=1, keepdim=True)
+                next_value = target_q.gather(1, best).squeeze()
+            else:
+                next_value = target_q.masked_fill(~mask, MASKED_Q).max()
+            target = result.reward + self.config.gamma * next_value * (not result.terminated)
+            return float(self.criterion(q_taken, target).item())
 
     # ------------------------------------------------------------------
     # Apprentissage
@@ -215,12 +236,15 @@ class Agent:
             "rng": capture_rng_state(),
         }
         payload.update(extra)
+        payload["ruleset"] = RULESET
         return payload
 
     def save(self, path, **extra):
         torch.save(self.state_dict(**extra), path)
 
     def load_state_dict(self, payload, load_optimizer=True):
+        if payload.get("ruleset") != RULESET:
+            raise ValueError("checkpoint legacy/incompatible : règles toriques non attestées")
         self.policy_net.load_state_dict(payload["policy"])
         self.target_net.load_state_dict(payload["target"])
         if load_optimizer and "optimizer" in payload:
@@ -240,6 +264,8 @@ class Agent:
         from .config import Config
 
         payload = torch.load(path, map_location="cpu", weights_only=False)
+        if payload.get("ruleset") != RULESET:
+            raise ValueError("checkpoint legacy/incompatible : règles toriques non attestées")
         config = config or Config.from_dict(payload["config"])
         agent = cls(config, device=device)
         agent.load_state_dict(payload, load_optimizer=load_optimizer)

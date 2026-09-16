@@ -1,4 +1,4 @@
-"""Démonstration du bug mural du socle fourni par le professeur.
+"""Preuve du comportement torique officiel du socle fourni par le professeur.
 
 Ces tests documentent le comportement RÉEL de `serpent-algo.py` (non modifié).
 Ils ne testent pas le moteur RL : ils servent de preuve reproductible que la
@@ -15,6 +15,9 @@ import os
 import sys
 
 import pytest
+
+from snake_rl import rules
+from snake_rl.game import SnakeGame
 
 LEGACY_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -56,11 +59,7 @@ def test_legacy_constants_are_the_official_ones(legacy):
 def test_legacy_snake_teleports_through_walls(
     legacy, start, direction, expected_wrapped_head
 ):
-    """BUG : le modulo de `move()` fait réapparaître le serpent de l'autre côté.
-
-    Attendu par les règles du jeu : sortir de la grille = Game Over.
-    Observé sur le socle : la tête est téléportée au bord opposé, vivante.
-    """
+    """Le modulo de `move()` fait réapparaître le serpent au bord opposé."""
     snake = legacy.Snake()
     snake.head_pos = list(start)
     snake.body = [list(start)]
@@ -68,7 +67,7 @@ def test_legacy_snake_teleports_through_walls(
 
     snake.move()
 
-    assert snake.head_pos == expected_wrapped_head, "le socle devrait wrapper (bug)"
+    assert snake.head_pos == expected_wrapped_head
     assert snake.check_wall_collision() is False
     assert snake.is_game_over() is False, (
         "le serpent a traversé un mur sans mourir : la grille est un tore"
@@ -95,6 +94,12 @@ def test_legacy_wall_collision_is_unreachable_after_move(legacy):
                 snake.direction = direction
                 snake.move()
                 assert snake.check_wall_collision() is False
+                game = SnakeGame(seed=0)
+                game.body = [(x, y)]
+                game.direction = direction
+                result = game.step(rules.ACTIONS.index(direction))
+                assert list(game.head) == snake.head_pos
+                assert result.done is False
 
 
 def test_legacy_move_counter_is_dead_code(legacy):

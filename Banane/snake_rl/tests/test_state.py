@@ -120,37 +120,35 @@ def test_no_food_neutralises_food_bits():
 
 
 # ----------------------------------------------------------------------
-# Bits de danger : murs
+# Les bordures libres ne sont pas dangereuses
 # ----------------------------------------------------------------------
 
 
-def test_danger_straight_against_the_top_wall():
+def test_no_danger_straight_at_top_edge():
     state = build_state(make_game((7, 0), rules.UP, (7, 7)))
-    assert bit(state, "danger_straight") == 1.0
+    assert bit(state, "danger_straight") == 0.0
     assert bit(state, "danger_right") == 0.0
     assert bit(state, "danger_left") == 0.0
 
 
-def test_danger_right_against_the_right_wall():
-    """Tête en haut à droite, direction haut : le mur droit est à droite."""
+def test_no_danger_right_at_right_edge():
     state = build_state(make_game((14, 7), rules.UP, (0, 0)))
-    assert bit(state, "danger_right") == 1.0
+    assert bit(state, "danger_right") == 0.0
     assert bit(state, "danger_straight") == 0.0
     assert bit(state, "danger_left") == 0.0
 
 
-def test_danger_left_against_the_left_wall():
+def test_no_danger_left_at_left_edge():
     state = build_state(make_game((0, 7), rules.UP, (14, 14)))
-    assert bit(state, "danger_left") == 1.0
+    assert bit(state, "danger_left") == 0.0
     assert bit(state, "danger_straight") == 0.0
     assert bit(state, "danger_right") == 0.0
 
 
-def test_corner_sets_two_danger_bits():
-    """Coin haut-gauche, direction haut : mur devant et mur à gauche."""
+def test_free_corner_has_no_danger():
     state = build_state(make_game((0, 0), rules.UP, (7, 7)))
-    assert bit(state, "danger_straight") == 1.0
-    assert bit(state, "danger_left") == 1.0
+    assert bit(state, "danger_straight") == 0.0
+    assert bit(state, "danger_left") == 0.0
     assert bit(state, "danger_right") == 0.0
 
 
@@ -165,7 +163,7 @@ def test_open_field_has_no_danger():
 
 
 def test_danger_straight_from_own_body():
-    game = make_game((7, 7), rules.UP, (0, 0), body=[(8, 7), (8, 6), (7, 6)])
+    game = make_game((7, 7), rules.UP, (0, 0), body=[(8, 7), (8, 6), (7, 6), (6, 6)])
     state = build_state(game)
     assert bit(state, "danger_straight") == 1.0
 

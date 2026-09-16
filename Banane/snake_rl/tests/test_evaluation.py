@@ -12,6 +12,7 @@ from snake_rl.config import Config
 from snake_rl.evaluate import evaluate, is_better, percentile, play_episode
 from snake_rl.metrics import MetricsLogger, load_replay, save_replay
 from snake_rl.train import Trainer
+from snake_rl.rules import RULESET
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
@@ -65,8 +66,8 @@ def test_evaluation_is_deterministic_for_a_fixed_policy():
     """Même agent, mêmes seeds : exactement les mêmes scores."""
     agent = Agent(tiny_config())
     seeds = [1000, 1001, 1002, 1003]
-    assert evaluate(agent, seeds, record_best_frames=False)["scores"] == evaluate(
-        agent, seeds, record_best_frames=False
+    assert evaluate(agent, seeds, record_best_frames=False, max_steps_without_food=100)["scores"] == evaluate(
+        agent, seeds, record_best_frames=False, max_steps_without_food=100
     )["scores"]
 
 
@@ -75,7 +76,7 @@ def test_evaluation_never_writes_to_the_replay_buffer():
     agent = Agent(tiny_config())
     size_before = len(agent.memory)
     steps_before = agent.learn_steps
-    evaluate(agent, [1000, 1001], record_best_frames=False)
+    evaluate(agent, [1000, 1001], record_best_frames=False, max_steps_without_food=100)
     assert len(agent.memory) == size_before
     assert agent.learn_steps == steps_before
 
@@ -83,13 +84,13 @@ def test_evaluation_never_writes_to_the_replay_buffer():
 def test_evaluation_does_not_move_the_weights():
     agent = Agent(tiny_config())
     before = agent.policy_net.net[0].weight.clone()
-    evaluate(agent, [1000, 1001, 1002], record_best_frames=False)
+    evaluate(agent, [1000, 1001, 1002], record_best_frames=False, max_steps_without_food=100)
     assert torch.allclose(before, agent.policy_net.net[0].weight)
 
 
 def test_evaluation_reports_all_the_required_metrics():
     agent = Agent(tiny_config())
-    block = evaluate(agent, list(range(1000, 1010)), record_best_frames=False)
+    block = evaluate(agent, list(range(1000, 1010)), record_best_frames=False, max_steps_without_food=100)
     for key in (
         "mean_score", "median_score", "std_score", "p10_score", "p90_score",
         "record", "win_rate", "truncation_rate", "mean_steps", "median_steps",
@@ -106,14 +107,14 @@ def test_evaluation_reports_all_the_required_metrics():
 def test_evaluation_uses_the_seeds_it_was_given():
     agent = Agent(tiny_config())
     seeds = [1000, 1234, 4321]
-    assert evaluate(agent, seeds, record_best_frames=False)["seeds"] == seeds
+    assert evaluate(agent, seeds, record_best_frames=False, max_steps_without_food=100)["seeds"] == seeds
 
 
 def test_different_seeds_give_different_episodes():
     agent = Agent(tiny_config())
-    first = play_episode(agent, 1000, max_steps_without_food=200)
-    second = play_episode(agent, 5000, max_steps_without_food=200)
-    assert (first["score"], first["steps"]) != (second["score"], second["steps"]) or True
+    first = play_episode(agent, 1000, record_frames=True, max_steps_without_food=200)
+    second = play_episode(agent, 5000, record_frames=True, max_steps_without_food=200)
+    assert first["frames"] != second["frames"]
     assert first["seed"] != second["seed"]
 
 
@@ -124,6 +125,7 @@ def test_different_seeds_give_different_episodes():
 
 def block(mean, median=0.0, p10=0.0, win=0.0, std=0.0):
     return {
+        "ruleset": RULESET,
         "mean_score": mean, "median_score": median, "p10_score": p10,
         "win_rate": win, "std_score": std,
     }
@@ -171,7 +173,7 @@ def test_lower_variance_wins_when_everything_else_ties():
 def test_best_replay_reproduces_the_measured_score_exactly():
     """Le point central : on doit voir la partie qui a fait le score."""
     agent = Agent(tiny_config())
-    result = evaluate(agent, list(range(1000, 1008)), record_best_frames=True)
+    result = evaluate(agent, list(range(1000, 1008)), record_best_frames=True, max_steps_without_food=100)
     replay = result["best_replay"]
     assert replay["score"] == result["record"]
     assert replay["seed"] == result["best_seed"]

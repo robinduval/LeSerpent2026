@@ -34,6 +34,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 from .config import Config
 from .metrics import environment_info
+from .rules import RULESET
 
 
 def expand_grid(grid):
@@ -108,7 +109,7 @@ def ranking_key(summary):
     Volontairement explicable : quatre critères lisibles dans cet ordre, pas
     une note composite opaque qu'on ne saurait pas justifier en soutenance.
     """
-    if summary.get("status") != "ok" or summary.get("best_eval_mean_score") is None:
+    if not eligible(summary):
         return (-1e9, -1e9, -1e9, -1e9)
     return (
         summary["best_eval_mean_score"],
@@ -116,6 +117,13 @@ def ranking_key(summary):
         summary.get("best_eval_median_score") or 0.0,
         -(summary.get("best_eval_std_score") or 0.0),
     )
+
+
+def eligible(summary):
+    """Aucun résultat mural ou sans provenance ne participe au classement."""
+    return (summary.get("ruleset") == RULESET
+            and summary.get("status") == "ok"
+            and summary.get("best_eval_mean_score") is not None)
 
 
 def aggregate_groups(summaries):
@@ -126,6 +134,8 @@ def aggregate_groups(summaries):
     """
     groups = {}
     for summary in summaries:
+        if not eligible(summary):
+            continue
         groups.setdefault(summary["group"], []).append(summary)
 
     rows = []
@@ -163,7 +173,7 @@ def write_reports(search_dir, summaries, groups, elapsed, space):
     """Écrit search_summary.csv et search_report.md."""
     csv_path = os.path.join(search_dir, "search_summary.csv")
     columns = [
-        "trial_id", "group", "status", "algorithm", "seed",
+        "trial_id", "group", "status", "ruleset", "eligible", "algorithm", "seed",
         "best_eval_mean_score", "best_eval_median_score", "best_eval_p10_score",
         "best_eval_p90_score", "best_eval_std_score", "best_eval_record",
         "best_eval_win_rate", "best_eval_truncation_rate", "record_train",
@@ -174,15 +184,19 @@ def write_reports(search_dir, summaries, groups, elapsed, space):
         writer.writeheader()
         for summary in sorted(summaries, key=ranking_key, reverse=True):
             row = dict(summary)
+            row["eligible"] = eligible(summary)
             row["seed"] = summary.get("config", {}).get("seed")
             writer.writerow(row)
 
-    ranked = sorted(summaries, key=ranking_key, reverse=True)
+    ranked = sorted([s for s in summaries if eligible(s)], key=ranking_key, reverse=True)
+    # Ne pas faire confiance à une agrégation fournie depuis un ancien run.
+    groups = aggregate_groups(summaries)
     lines = [
         f"# Rapport de recherche — {space.get('name', 'sans nom')}",
         "",
         f"- Trials : {len(summaries)} ({sum(s['status'] == 'ok' for s in summaries)} réussis)",
         f"- Temps total : {elapsed / 60:.1f} min",
+        f"- Règles : {RULESET}; {len(summaries) - len(ranked)} trials exclus du classement",
         f"- Grille : `{json.dumps(space.get('grid', {}), ensure_ascii=False)}`",
         f"- Seeds d'entraînement : {space.get('seeds')}",
         f"- Épisodes par trial : {space.get('base', {}).get('episodes')}",
@@ -245,6 +259,8 @@ def run_search(space, output_dir=None, workers=None):
     """Exécute une campagne complète et écrit ses rapports."""
     output_dir = output_dir or space.get("output_dir", "runs")
     search_dir = os.path.join(output_dir, space.get("name", "search"))
+    if os.path.isdir(search_dir) and os.listdir(search_dir):
+        raise ValueError("campagne existante (potentiellement legacy) : choisir un nouveau nom")
     os.makedirs(search_dir, exist_ok=True)
 
     trials = build_trials(space)

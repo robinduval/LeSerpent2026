@@ -61,7 +61,8 @@ class Config:
 
     # --- Replay visuel ---
     replay_best_after_eval: bool = True
-    show_replay_window: bool = False  # à couper pendant les grid searches
+    show_replay_window: bool = True  # à couper pendant les grid searches
+    replay_fps: int = 60  # cadence graphique uniquement, indépendante du moteur
     replay_speed_multiplier: int = 8
 
     # --- Récompense ---
@@ -75,11 +76,13 @@ class Config:
     # smoke test.
     #
     # 500 pas sans pomme est très généreux : la grille ne compte que 225 cases,
-    # donc une politique compétente n'est jamais tronquée. Une troncature est
+    # mais cela ne garantit pas l'absence de troncature sur un tore. Elle est
     # comptabilisée séparément (`truncation_rate`) et n'est ni une défaite ni
     # une victoire. La valeur apparaît dans la configuration et dans tous les
     # rapports. 0 désactive complètement le garde-fou.
     max_steps_without_food: int = 500
+    # Seuil ANALYTIQUE, n'arrête jamais le jeu.
+    long_without_food_threshold: int = 100
 
     # --- Prioritized Experience Replay ---
     per_alpha: float = 0.6
@@ -93,6 +96,14 @@ class Config:
     checkpoint_every: int = 500
 
     def __post_init__(self):
+        if type(self.checkpoint_every) is not int or self.checkpoint_every < 0:
+            raise ValueError("checkpoint_every doit être un entier >= 0")
+        if type(self.replay_fps) is not int or self.replay_fps < 1:
+            raise ValueError("replay_fps doit être un entier >= 1")
+        if type(self.max_steps_without_food) is not int or self.max_steps_without_food < 0:
+            raise ValueError("max_steps_without_food doit être un entier >= 0")
+        if type(self.long_without_food_threshold) is not int or self.long_without_food_threshold < 1:
+            raise ValueError("long_without_food_threshold doit être un entier >= 1")
         if self.tau > 0 and self.target_update_interval > 0:
             raise ValueError(
                 "hard update et soft update sont exclusifs : mettez "

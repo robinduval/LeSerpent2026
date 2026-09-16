@@ -3,6 +3,7 @@
 import os
 
 import pytest
+from snake_rl.rules import RULESET
 
 from snake_rl.grid_search import (
     aggregate_groups,
@@ -85,6 +86,7 @@ def test_an_invalid_grid_value_is_refused_at_build_time():
 
 def summary(mean, p10=0.0, median=0.0, std=0.0, status="ok"):
     return {
+        "ruleset": RULESET,
         "status": status,
         "best_eval_mean_score": mean,
         "best_eval_p10_score": p10,
@@ -131,6 +133,8 @@ def test_groups_average_across_seeds_not_best_seed():
         {"group": "b", "overrides": {}, "best_eval_mean_score": 9.0,
          "best_eval_p10_score": 0.0, "best_eval_record": 10, "seconds": 1.0},
     ]
+    for member in summaries:
+        member.update(ruleset=RULESET, status="ok")
     groups = aggregate_groups(summaries)
     assert groups[0]["group"] == "b", "b est plus faible au pic mais plus régulier"
     assert groups[0]["mean_of_eval_means"] == 10.0

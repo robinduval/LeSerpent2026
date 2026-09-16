@@ -14,7 +14,8 @@ def make_game(body, direction, food=(0, 0), seed=0):
     game.body = [tuple(p) for p in body]
     game.direction = direction
     game.food = tuple(food) if food is not None else None
-    game.done = False
+    game.terminated = False
+    game.truncated = False
     game.won = False
     game._grow_pending = False
     return game
@@ -34,40 +35,43 @@ def test_initial_position_matches_legacy():
 
 
 # ----------------------------------------------------------------------
-# §7 du cadrage : collision sur chacun des quatre murs
+# Plateau torique officiel : traversée des quatre bords
 # ----------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "head, direction, action",
+    "head, direction, action, expected",
     [
-        ((0, 7), rules.UP, LEFT),      # bord gauche
-        ((14, 7), rules.UP, RIGHT),    # bord droit
-        ((7, 0), rules.RIGHT, UP),     # bord haut
-        ((7, 14), rules.RIGHT, DOWN),  # bord bas
+        ((0, 7), rules.LEFT, LEFT, (14, 7)),
+        ((14, 7), rules.RIGHT, RIGHT, (0, 7)),
+        ((7, 0), rules.UP, UP, (7, 14)),
+        ((7, 14), rules.DOWN, DOWN, (7, 0)),
     ],
 )
-def test_wall_collision_kills_on_every_edge(head, direction, action):
-    """Sortir de la grille termine la partie, sans toucher au score officiel."""
-    game = make_game([head, (head[0], head[1] + 1)], direction, food=(2, 2))
+def test_wraparound_on_every_edge(head, direction, action, expected):
+    body = [( (head[0] - i * direction[0]) % rules.GRID_SIZE,
+              (head[1] - i * direction[1]) % rules.GRID_SIZE) for i in range(3)]
+    game = make_game(body, direction, food=(2, 2))
     score_before = game.score
 
     result = game.step(action)
 
-    assert result.done is True
-    assert result.reward == COURSE_REWARDS.death == -10.0
+    assert game.head == expected
+    assert result.done is False and game.done is False
+    assert result.reward == COURSE_REWARDS.step == 0.1
+    assert result.reward != COURSE_REWARDS.death
     assert result.score == score_before
     assert game.score == score_before
     assert result.won is False
-    assert result.info["cause"] == "wall"
+    assert result.info == {}
+    assert game.legal_action_mask()[action] is True
 
 
-def test_no_more_torus_wrapping():
-    """Le serpent ne réapparaît plus de l'autre côté (régression du socle)."""
+def test_wraparound_when_turning_at_edge():
     game = make_game([(0, 7), (1, 7)], rules.UP, food=(5, 5))
     game.step(LEFT)
-    assert game.done is True
-    assert game.head == (0, 7), "la tête ne doit pas avoir été téléportée"
+    assert game.done is False
+    assert game.head == (14, 7)
 
 
 # ----------------------------------------------------------------------
@@ -211,8 +215,8 @@ def test_invalid_action_raises():
 
 
 def test_step_after_done_raises():
-    game = make_game([(0, 7), (1, 7)], rules.UP, food=(5, 5))
-    game.step(LEFT)
+    game = make_game([(6, 5), (5, 5), (5, 4), (6, 4), (7, 4)], rules.UP)
+    game.step(UP)
     with pytest.raises(RuntimeError):
         game.step(UP)
 
