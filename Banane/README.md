@@ -33,3 +33,8 @@ Exemple :
 22:05 : Reponse : smoke test de 200 parties en 8 secondes, score moyen d'evaluation de 3.1 puis 9.3, record 23, pipeline complet valide.
 22:10 : Constatation : le score d'evaluation depasse tres largement le score d'entrainement, ce qui confirme qu'il faut mesurer sans exploration.
 22:15 : Activite : replay graphique d'une trajectoire enregistree, sans rejouer le modele, plus courbes d'apprentissage automatiques.
+20:30 : Activite : reprise de session, la campagne de comparaison dqn / ddqn / dueling_ddqn tourne toujours en tache de fond.
+20:35 : Activite : implementation du Prioritized Experience Replay, arbre de sommes pour un tirage et une mise a jour en O(log n).
+20:38 : Constatation : 19 tests PER passent, dont la propriete centrale mesuree et non supposee, la transition d'erreur TD 100 est rejouee plus de 4 fois la mediane.
+20:40 : Reponse : smoke test dueling_ddqn_per sur 200 episodes, evaluation moyenne 11.10, mediane 11.0, record 23, aucune troncature.
+20:42 : Hypothese : le 1.0 episode/s mesure n'est pas un cout du PER mais la concurrence des 4 trials de la campagne sur les memes coeurs, a reverifier machine libre.
