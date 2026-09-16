@@ -148,16 +148,45 @@ class SumTree:
 
         return idx, self.tree[idx]
 
+    @staticmethod
+    def _node_depth(idx):
+        """Profondeur (distance a la racine, racine=0) d'indices de nœuds.
+
+        Calcul par divisions entières successives par 2 de (idx+1) — évite tout
+        souci d'arrondi flottant qu'un log2 pourrait introduire près des
+        puissances de 2. Utilisé uniquement sur de petits tableaux d'indices
+        uniques (coût négligeable).
+        """
+        idx = np.asarray(idx, dtype=np.int64)
+        depth = np.zeros_like(idx)
+        temp = idx + 1
+        while np.any(temp > 1):
+            mask = temp > 1
+            depth[mask] += 1
+            temp[mask] //= 2
+        return depth
+
     def update_batch(self, tree_indices, priorities) -> None:
         """Version vectorisée de `update()` pour un lot d'indices/priorités.
 
-        Écrit toutes les feuilles en une fois puis remonte vers la racine niveau
-        par niveau, en recalculant chaque nœud comme la somme de ses deux enfants
-        (plutôt que par delta) : cela reste correct même si un même indice de
-        feuille apparaît plusieurs fois dans le lot (une transition tirée deux
-        fois), auquel cas la dernière valeur du lot l'emporte. Les indices
-        parents sont dédupliqués (`np.unique`) à chaque niveau pour éviter les
-        écritures redondantes.
+        Écrit toutes les feuilles en une fois puis remonte vers la racine, en
+        recalculant chaque nœud comme la somme de ses deux enfants (plutôt que
+        par delta) : cela reste correct même si un même indice de feuille
+        apparaît plusieurs fois dans le lot (une transition tirée deux fois),
+        auquel cas la dernière valeur du lot l'emporte.
+
+        Attention : si `capacity` n'est pas une puissance de 2, l'arbre n'est
+        pas parfaitement équilibré : comme c'est un arbre binaire *complet*
+        (seul le dernier niveau peut être partiellement rempli), les feuilles
+        touchées ne peuvent être qu'à l'une de deux profondeurs adjacentes (D
+        ou D-1) — jamais plus. On aligne donc une bonne fois les feuilles les
+        plus profondes sur les moins profondes (un seul niveau d'écart
+        possible), puis toute la suite de la remontée est parfaitement
+        synchronisée (tous les nœuds restants partagent la même profondeur à
+        chaque niveau, propriété d'un arbre complet au-dessus du dernier
+        niveau) : plus besoin de recalculer les profondeurs à chaque étape,
+        d'où une remontée en O(log capacity) sans terme quadratique. Les
+        indices sont dédupliqués (`np.unique`) à chaque niveau.
 
         Args:
             tree_indices: array-like (B,), indices de feuilles (comme rendus par `get`/`sample`).
@@ -181,14 +210,28 @@ class SumTree:
         if len(self.tree) == 1:
             return  # arbre a une seule feuille == racine, rien a propager
 
-        current = np.unique((leaf_idx - 1) // 2)
-        while True:
+        current = np.unique(leaf_idx)
+
+        # Alignement (au plus 1 niveau d'ecart possible entre feuilles) : fait une seule fois.
+        depths = self._node_depth(current)
+        max_depth = depths.max()
+        deepest_mask = depths == max_depth
+        if not deepest_mask.all():
+            deepest = current[deepest_mask]
+            shallow = current[~deepest_mask]
+            parents = np.unique((deepest - 1) // 2)
+            left = 2 * parents + 1
+            right = 2 * parents + 2
+            self.tree[parents] = self.tree[left] + self.tree[right]
+            current = np.unique(np.concatenate([shallow, parents]))
+
+        # A partir d'ici, tous les nœuds de `current` sont a la meme profondeur : remontee
+        # synchronisee simple jusqu'a la racine (plus de calcul de profondeur necessaire).
+        while not (current.size == 1 and current[0] == 0):
+            current = np.unique((current - 1) // 2)
             left = 2 * current + 1
             right = 2 * current + 2
             self.tree[current] = self.tree[left] + self.tree[right]
-            if current.size == 1 and current[0] == 0:
-                break
-            current = np.unique((current - 1) // 2)
 
     @property
     def total(self) -> float:
@@ -301,9 +344,11 @@ class PrioritizedReplayBuffer:
         self._next_states[pos] = next_state_arr
         self._dones[pos] = float(done)
 
-        # La donnee du SumTree n'est plus utilisee (stockage vectorise ci-dessus) :
-        # on passe None pour eviter de dupliquer la transition dans un tableau d'objets.
-        self.tree.add(self.max_priority, None)
+        # On conserve aussi le tuple dans tree.data (compatibilite : du code externe, ex.
+        # les tests d'agent.py, lit directement memory.tree.data[i]). Cout negligeable :
+        # une seule affectation par add(), le goulot d'etranglement etait sample()/update().
+        transition = (state_arr, int(action), float(reward), next_state_arr, float(done))
+        self.tree.add(self.max_priority, transition)
 
     def sample(self, batch_size: int):
         """Échantillonne un lot de transitions par stratification prioritaire.
