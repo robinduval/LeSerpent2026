@@ -1,0 +1,268 @@
+{
+  "selected_validation": "validation_ordered_seed23",
+  "source_checkpoint": "runs/ordered_1m_seed23/candidate_001000000.pt",
+  "source_sha256": "00219019a4527368e28b79daea3d193277346836ee76ae1be0e9d6c7f8bb982a",
+  "validation_seeds": [
+    10001,
+    10002,
+    10003
+  ],
+  "evaluation_hz": 5,
+  "evaluation_step_budget": 600,
+  "criterion": "maximum mean score, median, lower quartile, completions; time only if exact score multiset matches and all games ended naturally",
+  "official_aggregation_known": false,
+  "external_cutoffs_classability": "unknown; scores at fixed budget are a local validation convention",
+  "qualification": "selected on 3 validation episodes; not evidence of completion or first place",
+  "final_test_seeds": [
+    20001,
+    20002,
+    20003,
+    20004,
+    20005
+  ],
+  "final_test_used_for_selection": false,
+  "candidates": {
+    "validation_ddqn11": {
+      "checkpoint": "ddqn11_1m_seed17/candidate_001000000.pt",
+      "selection_key": [
+        37,
+        42,
+        27,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 37,
+        "score_median": 42,
+        "score_max": 42,
+        "score_min": 27,
+        "score_std": 7.0710678118654755,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 0.6666666666666666,
+        "external_cutoffs": 1,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "27": 64.24482417106628,
+          "42": 100.17254996299744
+        },
+        "terminal_time_count_by_exact_score": {
+          "27": 1,
+          "42": 1
+        }
+      }
+    },
+    "validation_ordered1m": {
+      "checkpoint": "ordered_1m_seed17/candidate_001000000.pt",
+      "selection_key": [
+        53.666666666666664,
+        57,
+        42,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 53.666666666666664,
+        "score_median": 57,
+        "score_max": 62,
+        "score_min": 42,
+        "score_std": 8.498365855987975,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 0.6666666666666666,
+        "external_cutoffs": 1,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "42": 72.60020089149475,
+          "57": 100.98008990287781
+        },
+        "terminal_time_count_by_exact_score": {
+          "42": 1,
+          "57": 1
+        }
+      }
+    },
+    "validation_n3": {
+      "checkpoint": "ddqn11_n3_1m_seed17/candidate_001000000.pt",
+      "selection_key": [
+        26.333333333333332,
+        29,
+        14,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 26.333333333333332,
+        "score_median": 29,
+        "score_max": 36,
+        "score_min": 14,
+        "score_std": 9.177266598624136,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 1.0,
+        "external_cutoffs": 0,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "36": 85.89323806762695,
+          "14": 27.747133016586304,
+          "29": 64.27302193641663
+        },
+        "terminal_time_count_by_exact_score": {
+          "36": 1,
+          "14": 1,
+          "29": 1
+        }
+      }
+    },
+    "validation_per": {
+      "checkpoint": "ddqn11_per_1m_seed17/candidate_001000000.pt",
+      "selection_key": [
+        18.333333333333332,
+        16,
+        10,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 18.333333333333332,
+        "score_median": 16,
+        "score_max": 29,
+        "score_min": 10,
+        "score_std": 7.93025150224688,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 1.0,
+        "external_cutoffs": 0,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "16": 40.60843515396118,
+          "10": 18.982616186141968,
+          "29": 62.40077304840088
+        },
+        "terminal_time_count_by_exact_score": {
+          "16": 1,
+          "10": 1,
+          "29": 1
+        }
+      }
+    },
+    "validation_per_n3": {
+      "checkpoint": "ddqn11_per_n3_1m_seed17/candidate_001000000.pt",
+      "selection_key": [
+        25,
+        20,
+        17,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 25,
+        "score_median": 20,
+        "score_max": 38,
+        "score_min": 17,
+        "score_std": 9.273618495495704,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 1.0,
+        "external_cutoffs": 0,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "38": 76.52827382087708,
+          "17": 36.138278007507324,
+          "20": 45.44108700752258
+        },
+        "terminal_time_count_by_exact_score": {
+          "38": 1,
+          "17": 1,
+          "20": 1
+        }
+      }
+    },
+    "validation_ordered_seed23": {
+      "checkpoint": "ordered_1m_seed23/candidate_001000000.pt",
+      "selection_key": [
+        64,
+        65,
+        61,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 64,
+        "score_median": 65,
+        "score_max": 66,
+        "score_min": 61,
+        "score_std": 2.160246899469287,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 0.0,
+        "external_cutoffs": 3,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {},
+        "terminal_time_count_by_exact_score": {}
+      }
+    },
+    "validation_ordered2m": {
+      "checkpoint": "ordered_5m_seed17/candidate_002000000.pt",
+      "selection_key": [
+        47,
+        48,
+        36,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 47,
+        "score_median": 48,
+        "score_max": 57,
+        "score_min": 36,
+        "score_std": 8.602325267042627,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 0.6666666666666666,
+        "external_cutoffs": 1,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "48": 80.7724769115448,
+          "36": 60.71785879135132
+        },
+        "terminal_time_count_by_exact_score": {
+          "48": 1,
+          "36": 1
+        }
+      }
+    },
+    "validation_ordered5m": {
+      "checkpoint": "ordered_5m_seed17/candidate_005000000.pt",
+      "selection_key": [
+        42.333333333333336,
+        43,
+        32,
+        0
+      ],
+      "summary": {
+        "episodes": 3,
+        "score_mean": 42.333333333333336,
+        "score_median": 43,
+        "score_max": 52,
+        "score_min": 32,
+        "score_std": 8.178562764256865,
+        "completed": 0,
+        "completion_rate": 0.0,
+        "collision_rate": 1.0,
+        "external_cutoffs": 0,
+        "target_223_rate": 0.0,
+        "terminal_time_mean_by_exact_score": {
+          "52": 93.63424396514893,
+          "43": 82.88692569732666,
+          "32": 57.458889961242676
+        },
+        "terminal_time_count_by_exact_score": {
+          "52": 1,
+          "43": 1,
+          "32": 1
+        }
+      }
+    }
+  }
+}

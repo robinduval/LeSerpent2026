@@ -1,0 +1,5 @@
+{"model": "runs/hybrid_rewired/candidate_000100000.pt", "mean_score": 223.0, "mean_steps": 7899.9, "min_score": 223, "completion_count": 20, "training_transitions": 100000, "training_updates": 12485}
+{"model": "runs/hybrid_rewired/candidate_000500000.pt", "mean_score": 223.0, "mean_steps": 7833.55, "min_score": 223, "completion_count": 20, "training_transitions": 500000, "training_updates": 62485}
+{"model": "programmed_greedy", "mean_score": 223.0, "mean_steps": 8352.4, "min_score": 223, "completion_count": 20}
+{"model": "uniform_safe_random", "mean_score": 223.0, "mean_steps": 8975.7, "min_score": 223, "completion_count": 20}
+{"model": "untrained_network", "mean_score": 223.0, "mean_steps": 12348.5, "min_score": 223, "completion_count": 20}

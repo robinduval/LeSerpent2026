@@ -1,0 +1,33 @@
+{
+  "checkpoint": "checkpoints/hybrid_223.pt",
+  "sha256": "e9e8f9617238a337fe8af052090763d5050bb9f5885097378f83218e3a922091",
+  "source": "runs/hybrid_rewired/candidate_000500000.pt",
+  "training_transitions": 500000,
+  "training_updates": 62485,
+  "metadata": {
+    "algorithm": "action-conditioned masked Double DQN",
+    "safety": "programmed Hamiltonian cycle rewiring shield v1",
+    "warmstart": "supervised current-apple cycle-distance heuristic values",
+    "warmstart_transitions": 6000,
+    "warmstart_updates": 500,
+    "warmstart_wall_seconds": 0.14157658300064213,
+    "training_seed": 731,
+    "training_wall_seconds": 27.177765000000363,
+    "reward": "-0.05 + cycle-distance progress/15 + 2/apple + 100/completion",
+    "last_loss": 0.053324028849601746,
+    "safety_filter": "rewired-cycle-v1",
+    "training_wall_time": 27.177765000000363,
+    "demonstration_cost": {
+      "transitions": 6000,
+      "supervised_updates": 500,
+      "wall_seconds": 0.14157658300064213
+    }
+  },
+  "default": false,
+  "qualification": "Experimental hybrid. Completion supported by invariants and accelerated training; no full frozen-checkpoint 5Hz completion within sprint.",
+  "selection_reason": "Genuine learned choices with Hamiltonian safety; stronger planner rejected for nearly eliminating neural decisions. 500k chosen as candidate from functional diagnostics, not a completed official evaluation.",
+  "evaluation_filter_authorization": "Requested, awaiting user answer; conservative pure-RL default preserved.",
+  "completed_training_episodes_at_checkpoint": 62,
+  "training_completions_223_at_checkpoint": 62,
+  "unfinished_training_fragment_steps": 491
+}

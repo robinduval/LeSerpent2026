@@ -1,0 +1,661 @@
+{
+  "generated_at_utc": "2026-09-16T19:09:23.061091+00:00",
+  "notice": "Snapshot of validation episodes only. No ranking is inferred from unequal samples.",
+  "scope": "validation_* directories only; held-out final_test is deliberately excluded",
+  "score_error_bars": "population standard deviation, not a confidence interval",
+  "partial_runs": "Missing summary.json means in progress or unfinished; planned n may be unknown.",
+  "time_rule": "Only compare natural terminal times separately at each identical exact score.",
+  "candidates": [
+    {
+      "run_id": "validation_ddqn11",
+      "model_id": "candidate_001000000:b7c1a9d05dd9",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": null,
+      "planned_episode_count_known": false,
+      "sources": [
+        {
+          "path": "runs/validation_ddqn11/evaluation.jsonl",
+          "sha256": "872ec2a6d909e3338cbb2a130e626194ce599a0c352385a6b657edc2afd86c12",
+          "bytes_read": 2436,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 37,
+        "median": 42,
+        "std_population": 7.0710678118654755,
+        "min": 27,
+        "max": 42
+      },
+      "termination_reasons": {
+        "external_step_limit": 1,
+        "self_collision": 2
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 1,
+      "collision_rate": 0.6666666666666666,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "27": {
+          "n": 1,
+          "mean": 64.24482417106628,
+          "median": 64.24482417106628,
+          "std_population": 0.0,
+          "min": 64.24482417106628,
+          "max": 64.24482417106628
+        },
+        "42": {
+          "n": 1,
+          "mean": 100.17254996299744,
+          "median": 100.17254996299744,
+          "std_population": 0.0,
+          "min": 100.17254996299744,
+          "max": 100.17254996299744
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_greedy",
+      "model_id": "algorithmic_greedy",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": 3,
+      "planned_episode_count_known": true,
+      "sources": [
+        {
+          "path": "runs/validation_greedy/evaluation.jsonl",
+          "sha256": "40d1dba6ae546d42b99eaaa3dcbcd796d702c055cfd473bbe3d05bf6a9faa189",
+          "bytes_read": 2278,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 26,
+        "median": 28,
+        "std_population": 13.9522996909709,
+        "min": 8,
+        "max": 42
+      },
+      "termination_reasons": {
+        "self_collision": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 0,
+      "collision_rate": 1.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "8": {
+          "n": 1,
+          "mean": 12.653805017471313,
+          "median": 12.653805017471313,
+          "std_population": 0.0,
+          "min": 12.653805017471313,
+          "max": 12.653805017471313
+        },
+        "28": {
+          "n": 1,
+          "mean": 51.40277886390686,
+          "median": 51.40277886390686,
+          "std_population": 0.0,
+          "min": 51.40277886390686,
+          "max": 51.40277886390686
+        },
+        "42": {
+          "n": 1,
+          "mean": 63.82388210296631,
+          "median": 63.82388210296631,
+          "std_population": 0.0,
+          "min": 63.82388210296631,
+          "max": 63.82388210296631
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_n3",
+      "model_id": "candidate_001000000:70a2004c2b66",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": null,
+      "planned_episode_count_known": false,
+      "sources": [
+        {
+          "path": "runs/validation_n3/evaluation.jsonl",
+          "sha256": "7469623b713b302eb90e72b6a677111264a72f4cfcdb1563c7d2fbf0faa0af56",
+          "bytes_read": 2444,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 26.333333333333332,
+        "median": 29,
+        "std_population": 9.177266598624136,
+        "min": 14,
+        "max": 36
+      },
+      "termination_reasons": {
+        "self_collision": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 0,
+      "collision_rate": 1.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "14": {
+          "n": 1,
+          "mean": 27.747133016586304,
+          "median": 27.747133016586304,
+          "std_population": 0.0,
+          "min": 27.747133016586304,
+          "max": 27.747133016586304
+        },
+        "29": {
+          "n": 1,
+          "mean": 64.27302193641663,
+          "median": 64.27302193641663,
+          "std_population": 0.0,
+          "min": 64.27302193641663,
+          "max": 64.27302193641663
+        },
+        "36": {
+          "n": 1,
+          "mean": 85.89323806762695,
+          "median": 85.89323806762695,
+          "std_population": 0.0,
+          "min": 85.89323806762695,
+          "max": 85.89323806762695
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_ordered1m",
+      "model_id": "candidate_001000000:19efc3f0b77b",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": null,
+      "planned_episode_count_known": false,
+      "sources": [
+        {
+          "path": "runs/validation_ordered1m/evaluation.jsonl",
+          "sha256": "f52b33569c8279cfa5e50ae23eefb2b4a291fd9c1027765f2a2382684188abdf",
+          "bytes_read": 2429,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 53.666666666666664,
+        "median": 57,
+        "std_population": 8.498365855987975,
+        "min": 42,
+        "max": 62
+      },
+      "termination_reasons": {
+        "external_step_limit": 1,
+        "self_collision": 2
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 1,
+      "collision_rate": 0.6666666666666666,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "42": {
+          "n": 1,
+          "mean": 72.60020089149475,
+          "median": 72.60020089149475,
+          "std_population": 0.0,
+          "min": 72.60020089149475,
+          "max": 72.60020089149475
+        },
+        "57": {
+          "n": 1,
+          "mean": 100.98008990287781,
+          "median": 100.98008990287781,
+          "std_population": 0.0,
+          "min": 100.98008990287781,
+          "max": 100.98008990287781
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_ordered2m",
+      "model_id": "candidate_002000000:0d840cf593a8",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": 3,
+      "planned_episode_count_known": true,
+      "sources": [
+        {
+          "path": "runs/validation_ordered2m/evaluation.jsonl",
+          "sha256": "0094b95c81982b6b9f3a6e0eb8f2de0dec0e5ee1958a0b078fb5c1f66ebcf6e8",
+          "bytes_read": 2429,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 47,
+        "median": 48,
+        "std_population": 8.602325267042627,
+        "min": 36,
+        "max": 57
+      },
+      "termination_reasons": {
+        "self_collision": 2,
+        "external_step_limit": 1
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 1,
+      "collision_rate": 0.6666666666666666,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "36": {
+          "n": 1,
+          "mean": 60.71785879135132,
+          "median": 60.71785879135132,
+          "std_population": 0.0,
+          "min": 60.71785879135132,
+          "max": 60.71785879135132
+        },
+        "48": {
+          "n": 1,
+          "mean": 80.7724769115448,
+          "median": 80.7724769115448,
+          "std_population": 0.0,
+          "min": 80.7724769115448,
+          "max": 80.7724769115448
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_ordered5m",
+      "model_id": "candidate_005000000:8fde90ac2644",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": 3,
+      "planned_episode_count_known": true,
+      "sources": [
+        {
+          "path": "runs/validation_ordered5m/evaluation.jsonl",
+          "sha256": "f928e49882ee94df415359f8460aea0f1a58382fd83a57785657fdaad9a703e1",
+          "bytes_read": 2432,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 42.333333333333336,
+        "median": 43,
+        "std_population": 8.178562764256865,
+        "min": 32,
+        "max": 52
+      },
+      "termination_reasons": {
+        "self_collision": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 0,
+      "collision_rate": 1.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "32": {
+          "n": 1,
+          "mean": 57.458889961242676,
+          "median": 57.458889961242676,
+          "std_population": 0.0,
+          "min": 57.458889961242676,
+          "max": 57.458889961242676
+        },
+        "43": {
+          "n": 1,
+          "mean": 82.88692569732666,
+          "median": 82.88692569732666,
+          "std_population": 0.0,
+          "min": 82.88692569732666,
+          "max": 82.88692569732666
+        },
+        "52": {
+          "n": 1,
+          "mean": 93.63424396514893,
+          "median": 93.63424396514893,
+          "std_population": 0.0,
+          "min": 93.63424396514893,
+          "max": 93.63424396514893
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_ordered_seed23",
+      "model_id": "candidate_001000000:00219019a452",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": 3,
+      "planned_episode_count_known": true,
+      "sources": [
+        {
+          "path": "runs/validation_ordered_seed23/evaluation.jsonl",
+          "sha256": "4cdf892ce6ead358c147b1b51e4372211800e6b6f53170faeeeec33825d505de",
+          "bytes_read": 2432,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 64,
+        "median": 65,
+        "std_population": 2.160246899469287,
+        "min": 61,
+        "max": 66
+      },
+      "termination_reasons": {
+        "external_step_limit": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 3,
+      "collision_rate": 0.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {},
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_original",
+      "model_id": "algorithmic_straight",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": null,
+      "planned_episode_count_known": false,
+      "sources": [
+        {
+          "path": "runs/validation_original/evaluation.jsonl",
+          "sha256": "c04afb11120b7db578d84522246db536b729cd236f8f6c10a3c77e2e71731771",
+          "bytes_read": 2279,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 0,
+        "median": 0,
+        "std_population": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "termination_reasons": {
+        "external_step_limit": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 3,
+      "collision_rate": 0.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {},
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_per",
+      "model_id": "candidate_001000000:c11d0a01830d",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": 3,
+      "planned_episode_count_known": true,
+      "sources": [
+        {
+          "path": "runs/validation_per/evaluation.jsonl",
+          "sha256": "96d2f9ae081c386bbc21b2f8eb31a091cf878ad152a1972faa68b07fdc091fc3",
+          "bytes_read": 2441,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 18.333333333333332,
+        "median": 16,
+        "std_population": 7.93025150224688,
+        "min": 10,
+        "max": 29
+      },
+      "termination_reasons": {
+        "self_collision": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 0,
+      "collision_rate": 1.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "10": {
+          "n": 1,
+          "mean": 18.982616186141968,
+          "median": 18.982616186141968,
+          "std_population": 0.0,
+          "min": 18.982616186141968,
+          "max": 18.982616186141968
+        },
+        "16": {
+          "n": 1,
+          "mean": 40.60843515396118,
+          "median": 40.60843515396118,
+          "std_population": 0.0,
+          "min": 40.60843515396118,
+          "max": 40.60843515396118
+        },
+        "29": {
+          "n": 1,
+          "mean": 62.40077304840088,
+          "median": 62.40077304840088,
+          "std_population": 0.0,
+          "min": 62.40077304840088,
+          "max": 62.40077304840088
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_per_n3",
+      "model_id": "candidate_001000000:c048755df329",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": 3,
+      "planned_episode_count_known": true,
+      "sources": [
+        {
+          "path": "runs/validation_per_n3/evaluation.jsonl",
+          "sha256": "f5aaccb0c46ad7761ba525ab183275b32e0764cc63d760887a4d3a1c1d5e3a15",
+          "bytes_read": 2451,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 25,
+        "median": 20,
+        "std_population": 9.273618495495704,
+        "min": 17,
+        "max": 38
+      },
+      "termination_reasons": {
+        "self_collision": 3
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 0,
+      "collision_rate": 1.0,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "17": {
+          "n": 1,
+          "mean": 36.138278007507324,
+          "median": 36.138278007507324,
+          "std_population": 0.0,
+          "min": 36.138278007507324,
+          "max": 36.138278007507324
+        },
+        "20": {
+          "n": 1,
+          "mean": 45.44108700752258,
+          "median": 45.44108700752258,
+          "std_population": 0.0,
+          "min": 45.44108700752258,
+          "max": 45.44108700752258
+        },
+        "38": {
+          "n": 1,
+          "mean": 76.52827382087708,
+          "median": 76.52827382087708,
+          "std_population": 0.0,
+          "min": 76.52827382087708,
+          "max": 76.52827382087708
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    },
+    {
+      "run_id": "validation_random",
+      "model_id": "algorithmic_random",
+      "status": "invocation summary present",
+      "observed_episodes": 3,
+      "planned_episodes": null,
+      "planned_episode_count_known": false,
+      "sources": [
+        {
+          "path": "runs/validation_random/evaluation.jsonl",
+          "sha256": "18732908cbceaeceacb676116914069319090307c1edfd07a9997445508b370e",
+          "bytes_read": 2274,
+          "rows_read": 3,
+          "incomplete_final_lines_ignored": 0
+        }
+      ],
+      "seeds": [
+        10001,
+        10002,
+        10003
+      ],
+      "evaluation_step_budget": 600,
+      "clock_hz": 5,
+      "scores": {
+        "n": 3,
+        "mean": 1.6666666666666667,
+        "median": 2,
+        "std_population": 0.4714045207910317,
+        "min": 1,
+        "max": 2
+      },
+      "termination_reasons": {
+        "self_collision": 2,
+        "external_step_limit": 1
+      },
+      "completed_episodes": 0,
+      "completion_rate": 0.0,
+      "external_cutoffs": 1,
+      "collision_rate": 0.6666666666666666,
+      "target_223_rate": 0.0,
+      "natural_terminal_times_by_exact_score": {
+        "2": {
+          "n": 2,
+          "mean": 104.87259101867676,
+          "median": 104.87259101867676,
+          "std_population": 1.680126667022705,
+          "min": 103.19246435165405,
+          "max": 106.55271768569946
+        }
+      },
+      "time_comparison_scope": "natural terminal events only; separately for each exact score"
+    }
+  ]
+}
