@@ -47,7 +47,7 @@ REWARD_FOOD = 10.0
 REWARD_DEATH = -100.0
 REWARD_VICTORY = 100.0
 REWARD_STEP = -0.01
-REWARD_CLOSER = 1.0  # bonus (malus) quand le coup suit (ne suit pas) le plus court chemin vers la pomme
+REWARD_CLOSER = 0.0  # bonus (malus) quand le coup suit (ne suit pas) le plus court chemin vers la pomme
 
 # Hyperparamètres
 ALPHA = 0.1          # taux d'apprentissage
@@ -58,6 +58,9 @@ TRAIN_EPISODES = 300
 EXPLORATION_SHARE = 0.6  # part de l'entraînement pendant laquelle epsilon décroît
 CHECKPOINT_EVERY = 20    # après l'exploration, évalue l'agent toutes les N parties...
 CHECKPOINT_GAMES = 10    # ...sur ce nombre de parties, et garde la meilleure Q-table
+
+# Score à partir duquel le serpent passe sur un cycle hamiltonien
+HAMILTON_SCORE = 150
 
 # Nombre de coups sans pomme avant de considérer que l'agent tourne en rond
 STARVATION_LIMIT = GRID_SIZE * GRID_SIZE * 2
@@ -327,6 +330,87 @@ def perceive(snake, apple):
     return tuple((safety, int(safety != DEAD and distance is not None and distance == best), contact)
                  for safety, distance, contact in moves)
 
+# --- CYCLES HAMILTONIENS (fin de partie) ---
+
+class HamiltonianCycle:
+    """Cycle passant une fois par chaque case de la grille torique."""
+    def __init__(self, order):
+        size = GRID_SIZE * GRID_SIZE
+        # Vérifie que c'est bien un cycle hamiltonien : toutes les cases, voisines deux à deux
+        assert len(set(order)) == size
+        for (x1, y1), (x2, y2) in zip(order, order[1:] + order[:1]):
+            dx, dy = (x2 - x1) % GRID_SIZE, (y2 - y1) % GRID_SIZE
+            assert sorted((min(dx, GRID_SIZE - dx), min(dy, GRID_SIZE - dy))) == [0, 1]
+        self.order = order
+        self.index = {cell: i for i, cell in enumerate(order)}
+
+    def direction(self, snake):
+        """Direction menant la tête à la case suivante du cycle."""
+        x, y = snake.head_pos
+        next_x, next_y = self.order[(self.index[(x, y)] + 1) % len(self.order)]
+        # Écart ramené à -1, 0 ou 1 en tenant compte du passage à travers les bords
+        return ((next_x - x + 1) % GRID_SIZE - 1, (next_y - y + 1) % GRID_SIZE - 1)
+
+    def ordered_length(self, snake):
+        """
+        Nombre de segments, depuis la tête, rangés dans l'ordre du cycle en remontant
+        vers l'arrière (des trous sont permis), et distance sur le cycle entre la tête
+        et le dernier de ces segments.
+        """
+        size = len(self.order)
+        head = self.index[tuple(snake.head_pos)]
+        count, previous = 1, 0
+        for segment in snake.body[1:]:
+            behind = (head - self.index[tuple(segment)]) % size
+            if behind <= previous:
+                break
+            count, previous = count + 1, behind
+        return count, previous
+
+    def is_safe_to_follow(self, snake):
+        """
+        Vrai si tout le corps est rangé dans l'ordre du cycle. Alors toutes les cases
+        devant la tête, jusqu'à la queue, sont libres : suivre le cycle ne peut pas
+        provoquer de collision, et le corps reste rangé au coup suivant.
+        """
+        count, tail_behind = self.ordered_length(snake)
+        # Seul piège : la case suivante est la queue et elle ne bougera pas (croissance)
+        return count == len(snake.body) and not (snake.grow_pending and tail_behind == len(self.order) - 1)
+
+def build_hamiltonian_cycles():
+    """
+    Cycle de base : serpentin sur les colonnes 1..N-1, puis retour par la colonne 0.
+    La dernière ligne se termine en x = N-1 (ou x = 1 si N est pair), voisine de
+    (0, N-1) grâce au passage à travers le bord.
+    Le tore étant symétrique, ses 8 symétries (miroirs, rotations) sont aussi des
+    cycles hamiltoniens : on les garde toutes pour suivre celle qui correspond le
+    mieux à la forme du serpent.
+    """
+    base = []
+    for y in range(GRID_SIZE):
+        xs = range(1, GRID_SIZE) if y % 2 == 0 else range(GRID_SIZE - 1, 0, -1)
+        base += [(x, y) for x in xs]
+    base += [(0, y) for y in range(GRID_SIZE - 1, -1, -1)]
+
+    last = GRID_SIZE - 1
+    symmetries = [
+        lambda x, y: (x, y),
+        lambda x, y: (last - x, y),
+        lambda x, y: (x, last - y),
+        lambda x, y: (last - x, last - y),
+        lambda x, y: (y, x),
+        lambda x, y: (last - y, x),
+        lambda x, y: (y, last - x),
+        lambda x, y: (last - y, last - x),
+    ]
+    return [HamiltonianCycle([symmetry(x, y) for x, y in base]) for symmetry in symmetries]
+
+HAMILTONIAN_CYCLES = build_hamiltonian_cycles()
+
+def best_order(snake):
+    """Plus long rangement du corps parmi tous les cycles, et le cycle correspondant."""
+    return max(((cycle.ordered_length(snake)[0], i) for i, cycle in enumerate(HAMILTONIAN_CYCLES)))
+
 # --- AGENT Q-LEARNING ---
 
 class QAgent:
@@ -382,42 +466,87 @@ class QAgent:
         self.q.update(table)
         return True
 
+# --- PILOTE AUTOMATIQUE ---
+
+def autopilot(agent, snake, apple, stuck):
+    """
+    Direction jouée en partie réelle : l'agent de Q-Learning, puis un cycle
+    hamiltonien à partir de HAMILTON_SCORE.
+    Si le corps est entièrement rangé dans l'ordre d'un des cycles, on suit ce
+    cycle : plus aucune collision n'est possible. Sinon on joue, parmi les coups
+    sûrs (queue atteignable), celui qui range le plus de segments dans l'un des
+    cycles ; à égalité, celui qui suit ce cycle. Sans coup sûr, l'agent joue.
+    Si le serpent tourne en rond sans se ranger, on laisse une fois sur deux
+    l'agent jouer un coup sûr au hasard pour casser la boucle.
+    """
+    if snake.score >= HAMILTON_SCORE:
+        for cycle in HAMILTONIAN_CYCLES:
+            if cycle.is_safe_to_follow(snake):
+                return cycle.direction(snake)
+
+    if snake.score >= HAMILTON_SCORE and not (stuck and random.random() < 0.5):
+        apple_pos = tuple(apple.position)
+        best_key, best_direction = None, None
+        for action in ACTIONS:
+            direction = turn(snake.direction, action)
+            if evaluate_move(snake, direction, apple_pos)[0] != TAIL_REACHABLE:
+                continue
+            clone = clone_snake(snake)
+            clone.set_direction(direction)
+            clone.move()
+            count, i = best_order(clone)
+            key = (count, direction == HAMILTONIAN_CYCLES[i].direction(snake))
+            if best_key is None or key > best_key:
+                best_key, best_direction = key, direction
+        if best_direction is not None:
+            return best_direction
+
+    action = agent.act(perceive(snake, apple), stuck)
+    return turn(snake.direction, action)
+
 # --- ENTRAÎNEMENT ET ÉVALUATION (sans affichage) ---
 
 def play_episode(agent, learn):
-    """Joue une partie complète sans affichage. Retourne (score, victoire, nombre de coups)."""
+    """
+    Joue une partie complète sans affichage. Retourne (score, victoire, nombre de coups).
+    À l'entraînement (learn=True) seul l'agent joue ; sinon c'est le pilote complet.
+    """
     snake = Snake()
     apple = Apple(snake.body)
-    state = perceive(snake, apple)
+    state = perceive(snake, apple) if learn else None
     steps_since_food = 0
     steps = 0
 
     while True:
         stuck = steps_since_food > STARVATION_LIMIT
-        action = agent.choose(state) if learn else agent.act(state, stuck)
-        snake.set_direction(turn(snake.direction, action))
+        if learn:
+            action = agent.choose(state)
+            snake.set_direction(turn(snake.direction, action))
+        else:
+            snake.set_direction(autopilot(agent, snake, apple, stuck))
         game_over, victory, ate = game_step(snake, apple)
         steps += 1
         steps_since_food = 0 if ate else steps_since_food + 1
         # À l'entraînement, tourner en rond trop longtemps compte comme un échec
         starved = learn and steps_since_food > STARVATION_LIMIT
 
-        if victory:
-            reward = REWARD_VICTORY
-        elif game_over or starved:
-            reward = REWARD_DEATH
-        elif ate:
-            reward = REWARD_FOOD
-        else:
-            reward = REWARD_STEP + (REWARD_CLOSER if state[action][1] else -REWARD_CLOSER)
-
         done = game_over or starved or steps_since_food > 10 * STARVATION_LIMIT
-        next_state = None if (game_over or starved) else perceive(snake, apple)
+
         if learn:
+            if victory:
+                reward = REWARD_VICTORY
+            elif game_over or starved:
+                reward = REWARD_DEATH
+            elif ate:
+                reward = REWARD_FOOD
+            else:
+                reward = REWARD_STEP + (REWARD_CLOSER if state[action][1] else -REWARD_CLOSER)
+            next_state = None if (game_over or starved) else perceive(snake, apple)
             agent.learn(state, action, reward, next_state)
+            state = next_state
+
         if done:
             return snake.score, victory, steps
-        state = next_state
 
 def format_duration(seconds):
     """Durée au format MM:SS, comme le chronomètre du jeu."""
@@ -531,10 +660,8 @@ def main(agent, speed=1.0):
             # Le serpent se déplace à la vitesse définie
             move_counter += 1
             if move_counter >= GAME_SPEED // 10: # Déplace le serpent à un rythme constant
-                # L'agent choisit la direction à la place du clavier
-                state = perceive(snake, apple)
-                action = agent.act(state, stuck=steps_since_food > STARVATION_LIMIT)
-                snake.set_direction(turn(snake.direction, action))
+                # Le pilote automatique choisit la direction à la place du clavier
+                snake.set_direction(autopilot(agent, snake, apple, steps_since_food > STARVATION_LIMIT))
 
                 game_over, victory, ate = game_step(snake, apple)
                 move_counter = 0
