@@ -70,4 +70,4 @@ sauvegardé dans    : /home/brian/Documents/aepita/other-projects/LeSerpent2026/
 
 
 Sur le premier try, avec les points d'un algo extrement simple (model a 11 parametres)
-On arrive a un score de 34 avec un temps de 1 min 26 soit un ratio score / temps de ~0.4
+On arrive a un score de 34 avec un temps de 1 min 26 soit un ratio score / temps de ~0.421:39 : Algorithme simple à comprendre, on a eu des résultats intéressant dessus, avec le 11 parameter model
