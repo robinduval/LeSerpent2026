@@ -67,8 +67,19 @@ class Config:
     # --- Récompense ---
     reward_profile: str = "course"  # course | experimental
 
-    # --- Garde-fou expérimental (hors règles officielles) ---
-    max_steps_without_food: int = 0  # 0 = désactivé
+    # --- Garde-fou expérimental (HORS règles officielles) ---
+    #
+    # Nécessité technique, pas confort d'apprentissage : avec epsilon à 0, une
+    # politique déterministe encore imparfaite tourne en rond indéfiniment et
+    # l'évaluation ne se termine jamais. Mesuré en pratique dès le premier
+    # smoke test.
+    #
+    # 500 pas sans pomme est très généreux : la grille ne compte que 225 cases,
+    # donc une politique compétente n'est jamais tronquée. Une troncature est
+    # comptabilisée séparément (`truncation_rate`) et n'est ni une défaite ni
+    # une victoire. La valeur apparaît dans la configuration et dans tous les
+    # rapports. 0 désactive complètement le garde-fou.
+    max_steps_without_food: int = 500
 
     # --- Prioritized Experience Replay ---
     per_alpha: float = 0.6

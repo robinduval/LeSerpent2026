@@ -1,0 +1,226 @@
+"""Agent DQN : politique, mémoire, apprentissage et checkpoints.
+
+L'agent orchestre les trois blocs du cours. Il lit l'état produit par `Game`,
+interroge `Model`, mémorise la transition et déclenche l'apprentissage.
+
+Toutes les variantes (target network, Double DQN, Dueling) sont pilotées par
+la configuration. Par défaut, `algorithm="dqn"` donne la baseline du cours :
+on mesure d'abord, on améliore ensuite.
+"""
+
+import numpy as np
+import torch
+import torch.nn as nn
+
+from .model import build_model, resolve_device
+from .replay_buffer import ReplayBuffer
+from .rules import N_ACTIONS
+
+# Valeur utilisée pour éteindre une action interdite avant un argmax.
+# On n'utilise pas -inf : une ligne entièrement masquée produirait des NaN.
+MASKED_Q = -1e9
+
+
+class Agent:
+    """Agent DQN avec replay buffer, epsilon greedy et target network."""
+
+    def __init__(self, config, device=None):
+        self.config = config
+        self.device = device or resolve_device(config.device)
+
+        self.policy_net = build_model(config).to(self.device)
+        self.target_net = build_model(config).to(self.device)
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.target_net.eval()  # jamais de gradient côté cible
+
+        self.optimizer = torch.optim.Adam(
+            self.policy_net.parameters(), lr=config.learning_rate
+        )
+        self.criterion = (
+            nn.SmoothL1Loss() if config.loss == "huber" else nn.MSELoss()
+        )
+
+        self.memory = ReplayBuffer(
+            capacity=config.replay_capacity, seed=config.seed
+        )
+        self._rng = np.random.default_rng(config.seed)
+
+        self.episodes_done = 0
+        self.learn_steps = 0
+
+    # ------------------------------------------------------------------
+    # Exploration
+    # ------------------------------------------------------------------
+
+    @property
+    def epsilon(self):
+        """Décroissance linéaire de epsilon_start à epsilon_end."""
+        cfg = self.config
+        if cfg.epsilon_decay_episodes <= 0:
+            return cfg.epsilon_end
+        progress = min(1.0, self.episodes_done / cfg.epsilon_decay_episodes)
+        return cfg.epsilon_start + progress * (cfg.epsilon_end - cfg.epsilon_start)
+
+    # ------------------------------------------------------------------
+    # Décision
+    # ------------------------------------------------------------------
+
+    def act(self, state, mask=None, greedy=False):
+        """Choisit une action.
+
+        Args:
+            state: vecteur d'état (11 valeurs).
+            mask: masque des actions légales. Le demi-tour est exclu ici plutôt
+                qu'ignoré par le jeu, pour que le réseau ne gaspille pas une
+                sortie sur une action sans effet.
+            greedy: True en évaluation. Aucune exploration, epsilon vaut 0.
+
+        Returns:
+            L'indice de l'action choisie.
+        """
+        mask = np.ones(N_ACTIONS, dtype=bool) if mask is None else np.asarray(mask)
+        legal = np.flatnonzero(mask)
+        if legal.size == 0:  # ne devrait pas arriver, filet de sécurité
+            legal = np.arange(N_ACTIONS)
+
+        if not greedy and self._rng.random() < self.epsilon:
+            return int(self._rng.choice(legal))
+
+        return int(self.q_values(state, mask).argmax())
+
+    def q_values(self, state, mask=None):
+        """Valeurs Q d'un état, actions interdites éteintes. Sans gradient."""
+        self.policy_net.eval()
+        with torch.no_grad():
+            tensor = torch.as_tensor(
+                np.asarray(state, dtype=np.float32), device=self.device
+            ).unsqueeze(0)
+            q = self.policy_net(tensor).squeeze(0).cpu().numpy()
+        self.policy_net.train()
+        if mask is not None:
+            q = np.where(np.asarray(mask), q, MASKED_Q)
+        return q
+
+    # ------------------------------------------------------------------
+    # Mémoire
+    # ------------------------------------------------------------------
+
+    def remember(self, state, action, reward, next_state, done, next_mask=None):
+        self.memory.push(state, action, reward, next_state, done, next_mask)
+
+    # ------------------------------------------------------------------
+    # Apprentissage
+    # ------------------------------------------------------------------
+
+    def learn(self):
+        """Une mise à jour sur un batch. Retourne (loss, q_moyen) ou None.
+
+        Retourne None tant que la mémoire n'a pas atteint `learning_starts` :
+        apprendre sur quelques dizaines de transitions très corrélées revient
+        surtout à mémoriser du bruit.
+        """
+        cfg = self.config
+        if len(self.memory) < max(cfg.learning_starts, cfg.batch_size):
+            return None
+
+        states, actions, rewards, next_states, dones, next_masks = self.memory.sample(
+            cfg.batch_size, device=self.device
+        )
+
+        # Q(s, a) pour les actions réellement jouées.
+        q_taken = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+
+        with torch.no_grad():
+            next_q_target = self.target_net(next_states)
+
+            if cfg.uses_double:
+                # Double DQN : le policy net CHOISIT l'action, le target net
+                # l'ÉVALUE. Découpler les deux réduit la surestimation des Q.
+                next_q_policy = self.policy_net(next_states)
+                next_q_policy = next_q_policy.masked_fill(~next_masks, MASKED_Q)
+                best_actions = next_q_policy.argmax(dim=1, keepdim=True)
+                next_value = next_q_target.gather(1, best_actions).squeeze(1)
+            else:
+                next_q_target = next_q_target.masked_fill(~next_masks, MASKED_Q)
+                next_value = next_q_target.max(dim=1).values
+
+            targets = rewards + cfg.gamma * next_value * (1.0 - dones)
+
+        loss = self.criterion(q_taken, targets)
+
+        self.optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        if cfg.gradient_clip > 0:
+            nn.utils.clip_grad_norm_(
+                self.policy_net.parameters(), cfg.gradient_clip
+            )
+        self.optimizer.step()
+
+        self.learn_steps += 1
+        self._sync_target()
+
+        return float(loss.item()), float(q_taken.mean().item())
+
+    def _sync_target(self):
+        """Met à jour le réseau cible, en hard update ou en soft update."""
+        cfg = self.config
+        if cfg.tau > 0:
+            with torch.no_grad():
+                for target_param, param in zip(
+                    self.target_net.parameters(), self.policy_net.parameters()
+                ):
+                    target_param.mul_(1 - cfg.tau).add_(param, alpha=cfg.tau)
+        elif (
+            cfg.target_update_interval > 0
+            and self.learn_steps % cfg.target_update_interval == 0
+        ):
+            self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    # ------------------------------------------------------------------
+    # Checkpoints
+    # ------------------------------------------------------------------
+
+    def state_dict(self, **extra):
+        """Contenu complet d'un checkpoint, configuration comprise."""
+        from .seed import capture_rng_state
+
+        payload = {
+            "policy": self.policy_net.state_dict(),
+            "target": self.target_net.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "episodes_done": self.episodes_done,
+            "learn_steps": self.learn_steps,
+            "epsilon": self.epsilon,
+            "config": self.config.to_dict(),
+            "rng": capture_rng_state(),
+        }
+        payload.update(extra)
+        return payload
+
+    def save(self, path, **extra):
+        torch.save(self.state_dict(**extra), path)
+
+    def load_state_dict(self, payload, load_optimizer=True):
+        self.policy_net.load_state_dict(payload["policy"])
+        self.target_net.load_state_dict(payload["target"])
+        if load_optimizer and "optimizer" in payload:
+            self.optimizer.load_state_dict(payload["optimizer"])
+        self.episodes_done = payload.get("episodes_done", 0)
+        self.learn_steps = payload.get("learn_steps", 0)
+        return self
+
+    @classmethod
+    def load(cls, path, config=None, device=None, load_optimizer=True):
+        """Recharge un agent. La config stockée fait foi si aucune n'est donnée.
+
+        Le replay buffer n'est pas sauvegardé : une reprise d'entraînement
+        repart donc d'une mémoire vide et ne sera pas bit à bit identique à un
+        run continu. C'est documenté et assumé.
+        """
+        from .config import Config
+
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        config = config or Config.from_dict(payload["config"])
+        agent = cls(config, device=device)
+        agent.load_state_dict(payload, load_optimizer=load_optimizer)
+        return agent
