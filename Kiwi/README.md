@@ -8,3 +8,4 @@
 21h00 : Compréhension du code existant
 21h18 : Push d’une première version fonctionnelle
 21h20 : Dernier prompt pour résoudre l’infinité du dernier
+21h35 : Nouveau score, on a gagné
