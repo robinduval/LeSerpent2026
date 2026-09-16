@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Sorties d'expériences : volumineuses et régénérables.
+# Les résultats retenus sont promus à la main dans reports/.
+runs/
+checkpoints/
+replays/
+*.pt
