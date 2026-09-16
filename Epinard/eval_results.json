@@ -1,0 +1,146 @@
+{
+  "resume": {
+    "essais": 12,
+    "score_moyen": 59.67,
+    "score_median": 75,
+    "record": 98,
+    "score_min": 1,
+    "temps_moyen_s": 1.89,
+    "ratio_moyen": 28.0,
+    "victoires": 0
+  },
+  "essais": [
+    {
+      "score": 1,
+      "temps": 0.22,
+      "ratio_score_temps": 4.511,
+      "steps": 309,
+      "longueur": 4,
+      "remplissage_pct": 1.8,
+      "fin": "timeout",
+      "victoire": false,
+      "essai": 1
+    },
+    {
+      "score": 2,
+      "temps": 0.11,
+      "ratio_score_temps": 17.932,
+      "steps": 155,
+      "longueur": 5,
+      "remplissage_pct": 2.2,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 2
+    },
+    {
+      "score": 90,
+      "temps": 2.67,
+      "ratio_score_temps": 33.757,
+      "steps": 3882,
+      "longueur": 93,
+      "remplissage_pct": 41.3,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 3
+    },
+    {
+      "score": 98,
+      "temps": 3.0,
+      "ratio_score_temps": 32.657,
+      "steps": 4655,
+      "longueur": 101,
+      "remplissage_pct": 44.9,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 4
+    },
+    {
+      "score": 84,
+      "temps": 3.23,
+      "ratio_score_temps": 25.998,
+      "steps": 4949,
+      "longueur": 87,
+      "remplissage_pct": 38.7,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 5
+    },
+    {
+      "score": 96,
+      "temps": 2.64,
+      "ratio_score_temps": 36.304,
+      "steps": 4180,
+      "longueur": 99,
+      "remplissage_pct": 44.0,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 6
+    },
+    {
+      "score": 92,
+      "temps": 2.7,
+      "ratio_score_temps": 34.045,
+      "steps": 4312,
+      "longueur": 95,
+      "remplissage_pct": 42.2,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 7
+    },
+    {
+      "score": 27,
+      "temps": 0.99,
+      "ratio_score_temps": 27.151,
+      "steps": 1540,
+      "longueur": 30,
+      "remplissage_pct": 13.3,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 8
+    },
+    {
+      "score": 67,
+      "temps": 1.96,
+      "ratio_score_temps": 34.1,
+      "steps": 3084,
+      "longueur": 70,
+      "remplissage_pct": 31.1,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 9
+    },
+    {
+      "score": 33,
+      "temps": 1.57,
+      "ratio_score_temps": 21.042,
+      "steps": 2469,
+      "longueur": 36,
+      "remplissage_pct": 16.0,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 10
+    },
+    {
+      "score": 33,
+      "temps": 0.99,
+      "ratio_score_temps": 33.389,
+      "steps": 1527,
+      "longueur": 36,
+      "remplissage_pct": 16.0,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 11
+    },
+    {
+      "score": 93,
+      "temps": 2.65,
+      "ratio_score_temps": 35.113,
+      "steps": 4225,
+      "longueur": 96,
+      "remplissage_pct": 42.7,
+      "fin": "collision",
+      "victoire": false,
+      "essai": 12
+    }
+  ]
+}

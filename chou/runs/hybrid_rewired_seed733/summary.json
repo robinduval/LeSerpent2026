@@ -1,0 +1,176 @@
+{
+  "training_transitions": 200000,
+  "updates": 24985,
+  "wall_seconds": 11.338566667000123,
+  "training_completed_episodes": [
+    {
+      "training_transitions": 8938,
+      "score": 223,
+      "steps": 8938,
+      "completed": true,
+      "rl_return": 976.6999999999089
+    },
+    {
+      "training_transitions": 17153,
+      "score": 223,
+      "steps": 8215,
+      "completed": true,
+      "rl_return": 874.7166666665886
+    },
+    {
+      "training_transitions": 25927,
+      "score": 223,
+      "steps": 8774,
+      "completed": true,
+      "rl_return": 977.1666666665991
+    },
+    {
+      "training_transitions": 34295,
+      "score": 223,
+      "steps": 8368,
+      "completed": true,
+      "rl_return": 1016.7333333332443
+    },
+    {
+      "training_transitions": 41522,
+      "score": 223,
+      "steps": 7227,
+      "completed": true,
+      "rl_return": 992.2499999999262
+    },
+    {
+      "training_transitions": 50446,
+      "score": 223,
+      "steps": 8924,
+      "completed": true,
+      "rl_return": 970.733333333246
+    },
+    {
+      "training_transitions": 58434,
+      "score": 223,
+      "steps": 7988,
+      "completed": true,
+      "rl_return": 957.2666666665882
+    },
+    {
+      "training_transitions": 66442,
+      "score": 223,
+      "steps": 8008,
+      "completed": true,
+      "rl_return": 946.8666666665974
+    },
+    {
+      "training_transitions": 75125,
+      "score": 223,
+      "steps": 8683,
+      "completed": true,
+      "rl_return": 945.9833333332522
+    },
+    {
+      "training_transitions": 82879,
+      "score": 223,
+      "steps": 7754,
+      "completed": true,
+      "rl_return": 1005.433333333261
+    },
+    {
+      "training_transitions": 91545,
+      "score": 223,
+      "steps": 8666,
+      "completed": true,
+      "rl_return": 979.3666666665796
+    },
+    {
+      "training_transitions": 99863,
+      "score": 223,
+      "steps": 8318,
+      "completed": true,
+      "rl_return": 943.2333333332541
+    },
+    {
+      "training_transitions": 108753,
+      "score": 223,
+      "steps": 8890,
+      "completed": true,
+      "rl_return": 929.6999999999139
+    },
+    {
+      "training_transitions": 116526,
+      "score": 223,
+      "steps": 7773,
+      "completed": true,
+      "rl_return": 1058.0833333332555
+    },
+    {
+      "training_transitions": 124421,
+      "score": 223,
+      "steps": 7895,
+      "completed": true,
+      "rl_return": 1012.1166666665929
+    },
+    {
+      "training_transitions": 132190,
+      "score": 223,
+      "steps": 7769,
+      "completed": true,
+      "rl_return": 995.749999999928
+    },
+    {
+      "training_transitions": 140231,
+      "score": 223,
+      "steps": 8041,
+      "completed": true,
+      "rl_return": 915.416666666605
+    },
+    {
+      "training_transitions": 148003,
+      "score": 223,
+      "steps": 7772,
+      "completed": true,
+      "rl_return": 1020.0666666665949
+    },
+    {
+      "training_transitions": 155600,
+      "score": 223,
+      "steps": 7597,
+      "completed": true,
+      "rl_return": 983.883333333265
+    },
+    {
+      "training_transitions": 163104,
+      "score": 223,
+      "steps": 7504,
+      "completed": true,
+      "rl_return": 1031.9999999999216
+    },
+    {
+      "training_transitions": 171484,
+      "score": 223,
+      "steps": 8380,
+      "completed": true,
+      "rl_return": 1042.7999999999117
+    },
+    {
+      "training_transitions": 179164,
+      "score": 223,
+      "steps": 7680,
+      "completed": true,
+      "rl_return": 964.3333333332616
+    },
+    {
+      "training_transitions": 187285,
+      "score": 223,
+      "steps": 8121,
+      "completed": true,
+      "rl_return": 989.8833333332572
+    },
+    {
+      "training_transitions": 194431,
+      "score": 223,
+      "steps": 7146,
+      "completed": true,
+      "rl_return": 921.6333333332718
+    }
+  ],
+  "functional_checks": []
+}
