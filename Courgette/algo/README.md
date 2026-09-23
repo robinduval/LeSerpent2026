@@ -82,3 +82,12 @@ de 200 ms par frame.
 Le test sur le parcours complet est encore en cours. Après environ 6 800 coups,
 la pomme située dans la bande de la ligne 14 impose encore un détour de 15
 coups.
+
+
+
+## Autres solutions de fin de cours
+
+On a demandé à l'IA de trouvé un solution adapté par la suite en echangeant avec elle 
+pour le moment on trouve une option 14% plus rapide.
+
+la nouvelle idée consiste en meatn en place le principe d'arbre : TODO 
