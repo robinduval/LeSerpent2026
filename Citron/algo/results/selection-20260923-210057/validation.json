@@ -1,0 +1,104 @@
+[
+  {
+    "config": {
+      "algorithm": "shortcut",
+      "cutoff": 112,
+      "turn_offset": 3
+    },
+    "summary": {
+      "parties": 1000,
+      "score_total": 223000,
+      "score_mean": 223,
+      "score_median": 223.0,
+      "score_min": 223,
+      "score_max": 223,
+      "score_population_std": 0.0,
+      "victories": 1000,
+      "collisions": 0,
+      "truncated": 0,
+      "at_least_10": 1000,
+      "total_steps": 6651437,
+      "mean_steps": 6651.437,
+      "theoretical_seconds_5hz_mean": 1330.2874,
+      "theoretical_seconds_5hz_min": 1130.2,
+      "theoretical_seconds_5hz_max": 1496.6,
+      "theoretical_score_per_second_5hz_aggregate": 0.16763294909054993,
+      "mean_steps_per_apple": 29.827071748878925,
+      "theoretical_seconds_to_10_mean": 27.0806,
+      "batch_compute_wall_seconds": 61.99785554099071,
+      "simulation_steps_per_compute_second": 107284.95271263557,
+      "max_decision_ms": 45.55362500832416
+    },
+    "seed_first": 10000,
+    "seed_last": 10999,
+    "archive": "validation-shortcut-c112-o3.json.gz"
+  },
+  {
+    "config": {
+      "algorithm": "shortcut",
+      "cutoff": 112,
+      "turn_offset": 5
+    },
+    "summary": {
+      "parties": 1000,
+      "score_total": 223000,
+      "score_mean": 223,
+      "score_median": 223.0,
+      "score_min": 223,
+      "score_max": 223,
+      "score_population_std": 0.0,
+      "victories": 1000,
+      "collisions": 0,
+      "truncated": 0,
+      "at_least_10": 1000,
+      "total_steps": 6679277,
+      "mean_steps": 6679.277,
+      "theoretical_seconds_5hz_mean": 1335.8554,
+      "theoretical_seconds_5hz_min": 1154.8,
+      "theoretical_seconds_5hz_max": 1532.4,
+      "theoretical_score_per_second_5hz_aggregate": 0.16693423554675155,
+      "mean_steps_per_apple": 29.95191479820628,
+      "theoretical_seconds_to_10_mean": 26.9638,
+      "batch_compute_wall_seconds": 62.04842637499678,
+      "simulation_steps_per_compute_second": 107646.19491932033,
+      "max_decision_ms": 48.148458008654416
+    },
+    "seed_first": 10000,
+    "seed_last": 10999,
+    "archive": "validation-shortcut-c112-o5.json.gz"
+  },
+  {
+    "config": {
+      "algorithm": "shortcut",
+      "cutoff": 112,
+      "turn_offset": 1
+    },
+    "summary": {
+      "parties": 1000,
+      "score_total": 223000,
+      "score_mean": 223,
+      "score_median": 223.0,
+      "score_min": 223,
+      "score_max": 223,
+      "score_population_std": 0.0,
+      "victories": 1000,
+      "collisions": 0,
+      "truncated": 0,
+      "at_least_10": 1000,
+      "total_steps": 6681357,
+      "mean_steps": 6681.357,
+      "theoretical_seconds_5hz_mean": 1336.2714,
+      "theoretical_seconds_5hz_min": 1126.6,
+      "theoretical_seconds_5hz_max": 1520.2,
+      "theoretical_score_per_second_5hz_aggregate": 0.1668822665814744,
+      "mean_steps_per_apple": 29.96124215246637,
+      "theoretical_seconds_to_10_mean": 27.4004,
+      "batch_compute_wall_seconds": 61.99081758399552,
+      "simulation_steps_per_compute_second": 107779.7851423234,
+      "max_decision_ms": 59.75162499817088
+    },
+    "seed_first": 10000,
+    "seed_last": 10999,
+    "archive": "validation-shortcut-c112-o1.json.gz"
+  }
+]
