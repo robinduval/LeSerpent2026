@@ -24,7 +24,13 @@ on replanifie) :
 6. cycle Hamiltonien avec raccourcis prouvés sûrs à forte densité ou en cas de
    stagnation.
 
-Priorité : SAFE > SCORE > SPEED > SPACE.
+Objectif (lexicographique) : maximiser P(score = 100), puis minimiser
+ticks_to_100. La partie s'arrête à 100 : la 100e pomme est terminale, donc à
+99 on ne demande plus de certificat après le repas (mode « endgame ») ; un
+chemin simulé qui l'atteint vivant est une victoire garantie. Le poids de la
+sécurité croît avec la progression : risk = 1 + 10 * (score / 100) ** 3.
+
+Priorité : SURVIE > PROGRESSION VERS 100 > RAPIDITÉ > ESPACE / OPTIONS.
 """
 
 from __future__ import annotations
@@ -323,6 +329,39 @@ def _tail_certificate(body, mask, grow, food) -> bool:
     return False
 
 
+def _expected_next_distance(body, mask, grow) -> float:
+    """Espérance du nombre de ticks pour atteindre la prochaine pomme, qui
+    apparaît uniformément sur une case hors du corps.
+
+    BFS temporel par couches en bitset depuis la tête : body[i] devient
+    franchissable au tick L - i + grow. On étend depuis tout l'ensemble déjà
+    atteint (approximation : le serpent peut « patienter » en tournant). Une
+    case jamais atteinte compte pour 2 * W ticks. C'est ce qui rend la forme du
+    corps coûteuse : un corps étalé rallonge tous les trajets suivants."""
+    L = len(body)
+    targets = FULL & ~mask
+    total = targets.bit_count()
+    if not total:
+        return 0.0
+    seen = BIT[body[0]]
+    passable = targets
+    acc = reached = 0
+    t = 0
+    while reached < total and t < N:
+        t += 1
+        i = L - t + grow
+        if 1 <= i < L:
+            passable |= BIT[body[i]]
+        new = expand(seen) & passable & ~seen
+        if not new and i < 1:
+            break
+        seen |= new
+        k = (new & targets).bit_count()
+        acc += k * t
+        reached += k
+    return (acc + (total - reached) * 2 * W) / total
+
+
 def can_reach_tail(state: SnakeState) -> bool:
     return _tail_certificate(state.body, state.mask, state.grow, state.food)
 
@@ -411,11 +450,26 @@ class PlannerConfig:
     full_tail_ko: float = 8000.0
     full_mobility: float = 200.0
     full_risk: float = 5000.0
+    full_trapped: float = 50000.0    # espace atteignable < longueur (x risk_multiplier)
+    full_next: float = 50.0         # par tick espéré jusqu'à la pomme suivante
 
-    # Modes de densité
-    aggressive_below: float = 0.35
+    # Objectif : la partie s'arrête à target_score (0 = jamais).
+    target_score: int = 100
+    progress_risk_factor: float = 10.0   # risk = 1 + f * (score / target) ** 3
+    endgame_beam_width: int = 512
+    endgame_depth: int = 70
+    endgame_time_ms: float = 50.0
+    # En dessous de ce score, le plus court chemin A* certifié est pris avant
+    # le beam (phase agressive : la pomme la plus rapide d'abord).
+    astar_first_below: int = 40
+
+    # Phases selon le score (bornes basses 40 / 80 / 95) : multiplicateurs
+    # du poids de l'espace et du poids du temps.
+    phase_space: tuple = (0.5, 1.0, 2.0, 3.0)
+    phase_tick: tuple = (1.0, 1.0, 0.5, 0.25)
+
+    # Densité à partir de laquelle on poursuit la queue si le beam ne mange pas.
     safe_above: float = 0.65
-    safe_space_boost: float = 2.0    # multiplicateur du poids d'espace à haute densité
 
     # Cycle Hamiltonien
     use_cycle: bool = True
@@ -435,6 +489,8 @@ class PlannerConfig:
             cur = getattr(cfg, k)
             if isinstance(cur, bool):
                 v = v if isinstance(v, bool) else str(v).lower() in ("1", "true", "yes", "on")
+            elif isinstance(cur, tuple):
+                v = tuple(float(x) for x in (v.split("/") if isinstance(v, str) else v))
             else:
                 v = type(cur)(v)
             setattr(cfg, k, v)
@@ -500,6 +556,10 @@ class SnakePlanner:
         certified = [(a, c) for a, c in children
                      if _tail_certificate(c.body, c.mask, c.grow, c.food)]
 
+        # 0. Dernière pomme : elle termine la partie, seule compte l'atteindre vivant.
+        if self._is_final_apple(state):
+            return self._endgame_planner(state, children, certified, t0)
+
         # 1. Aucune sortie certifiée : survivre le plus longtemps possible.
         if not certified:
             info["mode"] = "survival"
@@ -516,7 +576,14 @@ class SnakePlanner:
             if move is not None:
                 return move
 
-        # 3. Beam Search sur les coups certifiés.
+        # 3. Phase agressive : le plus court chemin, s'il est certifié après le repas.
+        if state.score < cfg.astar_first_below:
+            pick = self._validated_food_route(state, certified)
+            if pick is not None:
+                info["mode"] = "astar-first"
+                return pick
+
+        # 4. Beam Search sur les coups certifiés.
         deadline = t0 + cfg.max_planning_time_ms / 1000.0 if cfg.max_planning_time_ms > 0 else None
         best_cls, best_val, best_action, unsafe_food_seen = self._beam(state, certified, deadline)
 
@@ -541,8 +608,10 @@ class SnakePlanner:
 
     # ---- Beam Search --------------------------------------------------
 
-    def _params(self, L: int) -> tuple[int, int]:
+    def _params(self, L: int, endgame: bool = False) -> tuple[int, int]:
         cfg = self.cfg
+        if endgame:
+            return cfg.endgame_depth, cfg.endgame_beam_width
         if not cfg.adaptive:
             return cfg.search_depth, cfg.beam_width
         if L < 50:
@@ -553,39 +622,58 @@ class SnakePlanner:
             return 60, 384
         return 70, 512
 
-    def _space_weight(self, occupancy: float) -> float:
-        cfg = self.cfg
-        if occupancy >= cfg.safe_above:
-            return cfg.full_space * cfg.safe_space_boost
-        if occupancy < cfg.aggressive_below:
-            return cfg.full_space * 0.5
-        return cfg.full_space
+    @staticmethod
+    def _phase(score: int) -> int:
+        """0 : 0-39 agressif, 1 : 40-79, 2 : 80-94 survie d'abord, 3 : 95-99."""
+        return 0 if score < 40 else 1 if score < 80 else 2 if score < 95 else 3
 
-    def _full_value(self, body, mask, grow, direction, food, t, eaten: bool) -> tuple[int, float]:
-        """Évaluation complète (flood fill + certificat). Retourne (classe, valeur)."""
+    def _risk_multiplier(self, score: int) -> float:
+        """Le prix d'une mort croît avec ce qu'on perdrait : 1 à 0, 11 à 100."""
+        target = self.cfg.target_score or 100
+        progress = min(score, target) / target
+        return 1.0 + self.cfg.progress_risk_factor * progress ** 3
+
+    def _full_value(self, body, mask, grow, direction, food, t, eaten: bool,
+                    score: int) -> tuple[int, float]:
+        """Évaluation complète (flood fill + certificat). Retourne (classe, valeur).
+
+        La classe (sécurité) domine toujours la valeur. Dans la valeur, la pomme
+        (+full_food) domine le temps, qui domine l'espace et la mobilité ; le
+        poids du temps baisse et celui de l'espace monte avec la phase."""
         cfg = self.cfg
         L = len(body)
         space = _flood(body[0], mask)
         tail_ok = _tail_certificate(body, mask, grow, food)
         mob = _mobility(body, mask, grow, direction)
         fill = L / N
-        v = -cfg.full_tick * t
+        phase = self._phase(score)
+        risk = self._risk_multiplier(score)
+        v = -cfg.full_tick * cfg.phase_tick[phase] * t
         if eaten:
             v += cfg.full_food
+            if cfg.full_next:
+                # Anticipation : ticks espérés pour la pomme suivante.
+                v -= cfg.full_next * cfg.phase_tick[phase] * _expected_next_distance(body, mask, grow)
         elif food >= 0:
             v -= cfg.full_distance * DISTANCE[body[0]][food]
-        v += self._space_weight(fill) * space
+        v += cfg.full_space * cfg.phase_space[phase] * space
         v += cfg.full_tail_ok if tail_ok else -cfg.full_tail_ko
         v += cfg.full_mobility * mob
         v -= cfg.full_risk * fill * fill * max(0, L - space)
+        if space < L:
+            v -= cfg.full_trapped * risk
         if eaten:
             return (SAFE_FOOD if tail_ok else UNSAFE_FOOD), v
         return SAFE_MOVE, v
 
-    def _beam(self, root: SnakeState, certified, deadline):
+    def _beam(self, root: SnakeState, certified, deadline, endgame: bool = False):
+        """Beam Search depuis les coups `certified`. En endgame, manger la pomme
+        est terminal (victoire) : valeur 1e12 - 1000 * profondeur, sans
+        certificat, et la recherche s'arrête à la première profondeur trouvée."""
         cfg = self.cfg
         L0 = len(root.body)
-        depth_max, width = self._params(L0)
+        depth_max, width = self._params(L0, endgame)
+        s_eat = root.score + 1
         food = root.food
         fill = L0 / N
         risk_mult = 1.0 + cfg.fast_risk * fill * fill
@@ -600,8 +688,10 @@ class SnakePlanner:
         eaten_at = None
         unsafe_food_seen = False
         for a, c in certified:
+            if c.score > root.score and endgame:
+                return SAFE_FOOD, 1e12 - 1000.0, a, False
             if c.score > root.score:
-                cls, v = self._full_value(c.body, c.mask, c.grow, c.direction, -1, 1, True)
+                cls, v = self._full_value(c.body, c.mask, c.grow, c.direction, -1, 1, True, s_eat)
                 v += cfg.fast_food_base - cfg.fast_food_tick
                 node = (cls, v, c.body, c.mask, c.grow, c.direction, a)
                 if cls == SAFE_FOOD:
@@ -611,7 +701,7 @@ class SnakePlanner:
                 else:
                     unsafe_food_seen = True
             else:
-                cls, v = self._full_value(c.body, c.mask, c.grow, c.direction, food, 1, False)
+                cls, v = self._full_value(c.body, c.mask, c.grow, c.direction, food, 1, False, root.score)
                 beam.append((cls, v, c.body, c.mask, c.grow, c.direction, a))
         beam.sort(key=lambda n: (n[0], n[1]), reverse=True)
         best_nonfood = beam[0] if beam else None
@@ -656,9 +746,13 @@ class SnakePlanner:
                         continue
                     seen.add(nbody)
                     nmask = blocked | hb
+                    if nh == food and endgame:
+                        # Dernière pomme : victoire, la plus précoce est la meilleure.
+                        info["nodes"] = nodes
+                        return SAFE_FOOD, 1e12 - 1000.0 * depth, ra, False
                     if nh == food:
                         # Analyse complète immédiate après un repas.
-                        cls, v = self._full_value(nbody, nmask, 1, a, -1, depth, True)
+                        cls, v = self._full_value(nbody, nmask, 1, a, -1, depth, True, s_eat)
                         if cls == SAFE_FOOD:
                             v += f_base - f_tick * depth
                             n2 = (cls, v, nbody, nmask, 1, a, ra)
@@ -686,7 +780,7 @@ class SnakePlanner:
             k = min(cfg.full_eval_top_k, len(beam))
             for i in range(k):
                 _, _, b, m, g, d, ra = beam[i]
-                cls, v = self._full_value(b, m, g, d, food, depth, False)
+                cls, v = self._full_value(b, m, g, d, food, depth, False, root.score)
                 beam[i] = (cls, v / 25.0, b, m, g, d, ra)  # remis à l'échelle du score rapide
             beam.sort(key=lambda n: n[1], reverse=True)
             best_nonfood = beam[0]
@@ -702,23 +796,77 @@ class SnakePlanner:
 
     # ---- A*, queue, cycle ---------------------------------------------
 
-    def _validated_food_route(self, state: SnakeState, certified) -> Optional[int]:
-        """A* -> simulation complète du chemin -> flood fill + certificat."""
-        path = astar_to_food(state)
-        if not path:
-            return None
-        if not any(a == path[0] for a, _ in certified):
-            return None
+    @staticmethod
+    def _simulate_route(state: SnakeState, path) -> Optional[SnakeState]:
+        """Joue `path` coup par coup ; None si le serpent meurt ou ne mange pas."""
         s = state
         for a in path:
             s = simulate(s, a)
             if s is DEAD:
                 return None
-        if s.score <= state.score:
+        return s if s.score > state.score else None
+
+    def _validated_food_route(self, state: SnakeState, certified) -> Optional[int]:
+        """Un A* par premier coup certifié -> simulation complète du chemin ->
+        évaluation complète de l'état après repas (certificat obligatoire).
+        Parmi les routes sûres, la meilleure valeur : la plus rapide, en tenant
+        compte de la forme laissée pour la pomme suivante."""
+        if state.food < 0:
             return None
-        if not can_reach_tail(s) or reachable_space(s) < 1:
-            return None
-        return path[0]
+        best = None
+        for a, c in certified:
+            if c.score > state.score:
+                s, t = c, 1
+            else:
+                path = astar(c, state.food)
+                if path is None:
+                    continue
+                s = self._simulate_route(c, path)
+                if s is None:
+                    continue
+                t = len(path) + 1
+            cls, v = self._full_value(s.body, s.mask, s.grow, s.direction, -1, t, True, s.score)
+            if cls != SAFE_FOOD or reachable_space(s) < 1:
+                continue
+            v -= self.cfg.fast_food_tick * t
+            if best is None or v > best[0]:
+                best = (v, a)
+        return best[1] if best else None
+
+    # ---- Endgame : la dernière pomme ----------------------------------
+
+    def _is_final_apple(self, state: SnakeState) -> bool:
+        target = self.cfg.target_score
+        return target > 0 and state.food >= 0 and state.score + 1 >= target
+
+    def _endgame_planner(self, state: SnakeState, children, certified, t0) -> int:
+        """Score 99 : manger termine la partie. On ne cherche que (1) survivre
+        et (2) atteindre la pomme ; le temps ne départage qu'en dernier.
+
+        Un chemin simulé exactement qui atteint la pomme vivant est une
+        victoire certaine (la pomme ne bouge pas avant d'être mangée) : aucun
+        certificat n'est exigé après le repas. Sinon, on attend en restant
+        certifié que la queue ouvre un passage."""
+        cfg = self.cfg
+        info = self.last_info
+        for a, c in children:
+            if c.score > state.score:
+                info["mode"] = "endgame-eat"
+                return a
+        path = astar_to_food(state)
+        if path and self._simulate_route(state, path) is not None:
+            info["mode"] = "endgame-astar"
+            return path[0]
+        deadline = t0 + cfg.endgame_time_ms / 1000.0 if cfg.endgame_time_ms > 0 else None
+        cls, _, action, _ = self._beam(state, children, deadline, endgame=True)
+        if cls == SAFE_FOOD:
+            info["mode"] = "endgame-beam"
+            return action
+        if certified:
+            info["mode"] = "endgame-wait"
+            return self._tail_chase(state, certified)
+        info["mode"] = "survival"
+        return max(children, key=lambda ac: (reachable_space(ac[1]), count_legal_moves(ac[1])))[0]
 
     def _tail_chase(self, state: SnakeState, certified) -> int:
         """Aller vers la queue pour la laisser libérer de l'espace, en gardant

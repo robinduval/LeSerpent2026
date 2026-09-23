@@ -1,5 +1,9 @@
 """Benchmark headless du planner, sur les classes Snake/Apple du vrai moteur.
 
+La partie s'arrête à score == 100 (--target). Métrique principale : % de parties
+qui atteignent 100 ; puis, parmi elles seulement, ticks_to_100 (médiane,
+moyenne, meilleur). Le temps est compté en ticks, jamais en secondes.
+
 Exemples :
     python bench.py --games 100
     python bench.py --games 1000 --workers 8 --set max_planning_time_ms=5
@@ -38,7 +42,7 @@ def engine():
 
 def play_game(args):
     """Rejoue exactement la mise à jour de main() du moteur, sans affichage."""
-    seed, overrides, max_stall = args
+    seed, overrides, max_stall, target = args
     eng = engine()
     random.seed(seed)
     planner = SnakePlanner(eng.GRID_SIZE, eng.GRID_SIZE, PlannerConfig.from_overrides(overrides))
@@ -69,6 +73,9 @@ def play_game(args):
         if snake.head_pos == list(apple.position):
             snake.grow()
             last_eat = ticks
+            if target and snake.score >= target:
+                outcome = "win100"
+                break
             if not apple.relocate(snake.body):
                 outcome = "victory"
                 break
@@ -78,6 +85,8 @@ def play_game(args):
             break
     return {
         "seed": seed, "score": snake.score, "ticks": ticks, "outcome": outcome,
+        "reached_100": outcome == "win100",
+        "ticks_to_100": ticks if outcome == "win100" else None,
         "max_len": max(max_len, len(snake.body)), "think_ms": 1000 * think / ticks,
         "think_max_ms": 1000 * think_max, "modes": modes,
     }
@@ -87,20 +96,29 @@ def summarize(results, label=""):
     scores = [r["score"] for r in results]
     ticks = [r["ticks"] for r in results]
     total_score, total_ticks = sum(scores), sum(ticks)
-    outcomes = {k: sum(r["outcome"] == k for r in results) for k in ("victory", "dead", "stall")}
+    outcomes = {k: sum(r["outcome"] == k for r in results) for k in ("win100", "victory", "dead", "stall")}
+    wins = [r["ticks_to_100"] for r in results if r["reached_100"]]
     modes: dict[str, int] = {}
     for r in results:
         for k, v in r["modes"].items():
             modes[k] = modes.get(k, 0) + v
     tot_modes = sum(modes.values()) or 1
-    print(f"=== {label or 'config'}  ({len(results)} parties)")
+    n = len(results)
+    print(f"=== {label or 'config'}  ({n} parties)")
+    print(f"  atteint 100 {100 * len(wins) / n:6.2f} %  ({len(wins)}/{n})")
+    if wins:
+        print(f"  ticks_to_100 médiane {statistics.median(wins):7.1f} | moyenne {statistics.mean(wins):7.1f}"
+              f" | meilleur {min(wins)} | pire {max(wins)}")
     print(f"  score      moyen {statistics.mean(scores):7.2f} | médian {statistics.median(scores):6.1f}"
           f" | min {min(scores)} | max {max(scores)}")
-    print(f"  ticks      moyen avant fin {statistics.mean(ticks):8.1f}")
-    print(f"  ticks/pomme {total_ticks / max(1, total_score):6.2f} | score/tick {total_score / total_ticks:.4f}")
+    print(f"  pommes/100 ticks {100 * total_score / total_ticks:6.3f} | ticks/pomme {total_ticks / max(1, total_score):6.2f}")
     print(f"  longueur max atteinte {max(r['max_len'] for r in results)}"
           f" (moyenne {statistics.mean(r['max_len'] for r in results):.1f})")
-    print(f"  issues     victoire {outcomes['victory']} | mort {outcomes['dead']} | stagnation {outcomes['stall']}")
+    print(f"  issues     100 {outcomes['win100']} | plateau plein {outcomes['victory']}"
+          f" | mort {outcomes['dead']} | stagnation {outcomes['stall']}")
+    fails = [f"{r['score']}@{r['seed']}" for r in results if not r["reached_100"]]
+    if fails:
+        print("  échecs (score@seed) " + ", ".join(fails))
     print(f"  réflexion  {statistics.mean(r['think_ms'] for r in results):.2f} ms/tick"
           f" (pire {max(r['think_max_ms'] for r in results):.1f} ms)")
     print("  modes      " + ", ".join(f"{k} {100 * v / tot_modes:.1f}%"
@@ -115,8 +133,8 @@ def parse_kv(items):
     return out
 
 
-def run(games, workers, overrides, seed0, max_stall, label):
-    jobs = [(seed0 + i, overrides, max_stall) for i in range(games)]
+def run(games, workers, overrides, seed0, max_stall, label, target=100):
+    jobs = [(seed0 + i, overrides, max_stall, target) for i in range(games)]
     t0 = time.time()
     if workers > 1:
         with Pool(workers) as pool:
@@ -135,6 +153,8 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--max-stall", type=int, default=3000,
                     help="arrêt si aucune pomme pendant N ticks (le moteur n'a pas de famine)")
+    ap.add_argument("--target", type=int, default=100,
+                    help="score qui termine la partie (0 = jouer jusqu'au plateau plein)")
     ap.add_argument("--set", action="append", metavar="PARAM=VAL", help="surcharge de PlannerConfig")
     ap.add_argument("--sweep", metavar="PARAM=V1,V2,...", help="compare plusieurs valeurs d'un paramètre")
     a = ap.parse_args()
@@ -143,9 +163,9 @@ def main():
     if a.sweep:
         k, vals = a.sweep.split("=", 1)
         for v in vals.split(","):
-            run(a.games, a.workers, {**base, k: v}, a.seed, a.max_stall, f"{k}={v} {base or ''}")
+            run(a.games, a.workers, {**base, k: v}, a.seed, a.max_stall, f"{k}={v} {base or ''}", a.target)
     else:
-        run(a.games, a.workers, base, a.seed, a.max_stall, str(base or "défaut"))
+        run(a.games, a.workers, base, a.seed, a.max_stall, str(base or "défaut"), a.target)
 
 
 if __name__ == "__main__":
