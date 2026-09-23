@@ -17,21 +17,27 @@ hamiltonien n'existe (225 cases, nombre impair, graphe biparti). Sur le tore,
 il en existe un : 14 pas à droite, 1 pas en bas, 15 fois. Le suivre remplit
 la grille à coup sûr, et la position de départ du serpent est déjà dessus.
 
-QUATRE ALGORITHMES (--algo) :
+CINQ ALGORITHMES (--algo) :
   dijkstra   plus court chemin vers la pomme ; s'il n'y en a pas, le coup qui
              laisse le plus d'espace. Optimal par pomme, myope sur la partie.
   glouton    Greedy Best-First, heuristique Manhattan torique. Rapide, se piège.
-  cycle      suit le cycle hamiltonien. Victoire garantie, mais ~12 500 pas.
-  tapsell    (défaut) le cycle, plus les raccourcis de John Tapsell : sauter en
-             avant dans l'ordre du cycle, sans jamais dépasser la pomme ni
-             rattraper la queue. Le corps reste rangé dans l'ordre du cycle,
-             donc le serpent peut toujours reprendre le cycle : victoire
-             garantie, en ~6 800 pas.
+  cycle      suit le cycle hamiltonien. Victoire certaine, mais ~12 500 pas.
+  tapsell    le cycle, plus les raccourcis de John Tapsell : sauter en avant
+             dans l'ordre du cycle, sans dépasser la pomme ni rattraper la
+             queue. ~6 800 pas. PAS strictement sûr : les cases sautées restent
+             derrière la tête, et une série de pommes juste devant elle peut
+             lui faire rattraper sa queue (rare, mais observé en fin de partie
+             quand les raccourcis restent actifs).
+  recompose  (défaut) le cycle n'est plus fixe. À chaque pas, on réécrit la
+             partie du cycle qui est devant la tête : chemin court vers la
+             pomme, puis un parcours de toutes les autres cases libres qui
+             revient à la queue (rotations de Pósa). Le corps n'est jamais
+             touché et aucune case n'est sautée : victoire certaine, ~3 900 pas.
 
 Usage :
-    python snake-algo.py play                     # tapsell, à la vitesse du jeu
-    python snake-algo.py play --algo cycle --speed 60
-    python snake-algo.py bench --games 30         # compare les quatre algos
+    python snake-algo.py play                     # recompose, à la vitesse du jeu
+    python snake-algo.py play --algo cycle --speed 60 --trace
+    python snake-algo.py bench --games 30         # compare les cinq algos
 """
 
 import argparse
@@ -60,8 +66,8 @@ def _assurer_environnement():
     raise SystemExit("pygame est introuvable, et Abricot/.venv/ aussi.")
 
 
-_assurer_environnement()
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+_assurer_environnement()
 
 # Le jeu de base s'appelle « serpent-algo.py » : le tiret interdit un import
 # ordinaire, on passe par importlib.
@@ -257,13 +263,199 @@ def algo_glouton(p):
     return _recherche(p, lambda g, n: manhattan_torique(n, pomme))
 
 
-ALGOS = {"dijkstra": algo_dijkstra, "glouton": algo_glouton,
-         "cycle": algo_cycle, "tapsell": algo_tapsell}
+# ---------------------------------------------------------------- recompose
+# Le cycle se découpe en deux arcs : [queue .. tête], le corps, auquel on ne
+# touche jamais ; et F, les cases libres devant la tête. Suivre n'importe quel
+# ordre de F qui part d'une voisine de la tête et finit sur une voisine de la
+# queue donne encore un cycle hamiltonien qui contient le corps : la victoire
+# reste certaine. On choisit donc, à chaque pas, un ordre de F où la pomme
+# vient le plus tôt possible.
+
+def carte_distances(src, permis):
+    d = {src: 0}
+    file = deque([src])
+    while file:
+        c = file.popleft()
+        for dd in DIRS:
+            n = voisin(c, dd)
+            if n in permis and n not in d:
+                d[n] = d[c] + 1
+                file.append(n)
+    return d
+
+
+def reste_couvrable(reste, depuis, voisines_queue):
+    """Test rapide : le reste de F peut-il encore être parcouru en entier,
+    en partant d'une voisine de `depuis` et en finissant près de la queue ?
+    D'un seul tenant, et au plus un cul-de-sac (qui sera alors la fin)."""
+    if not reste:
+        return depuis in voisines_queue
+    depart = next(iter(reste))
+    vu, pile = {depart}, [depart]
+    while pile:
+        c = pile.pop()
+        for dd in DIRS:
+            n = voisin(c, dd)
+            if n in reste and n not in vu:
+                vu.add(n)
+                pile.append(n)
+    if len(vu) != len(reste):
+        return False                          # le chemin a coupé F en deux
+    autour = {voisin(depuis, dd) for dd in DIRS}
+    if not (autour & reste) or not (voisines_queue & reste):
+        return False
+    impasses = 0
+    for c in reste:
+        degre = sum(1 for dd in DIRS if voisin(c, dd) in reste) + (c in autour)
+        if degre == 0:
+            return False
+        if degre == 1 and c not in voisines_queue:
+            impasses += 1
+            if impasses > 1:
+                return False
+    return True
+
+
+def chemins_vers_pomme(h, pomme, F, voisines_queue, marge, budget):
+    """Chemins tête -> pomme dans F, du plus court au plus long (plus court +
+    marge), qui longent les obstacles et ne coupent pas le reste de F.
+    Le plus court chemin brut coupe F en deux une fois sur deux : c'est ce
+    test qui rend la recomposition possible."""
+    dist = carte_distances(pomme, F | {h})
+    if h not in dist:
+        return
+    compteur = [0]
+    chemin, dedans = [], set()
+
+    def colle(c):          # voisins déjà hors de F : on longe les obstacles
+        return sum(1 for dd in DIRS if voisin(c, dd) not in F or voisin(c, dd) in dedans)
+
+    def dfs(c, reste_pas):
+        compteur[0] += 1
+        if compteur[0] > budget:
+            return
+        if c == pomme:
+            if reste_couvrable(F - dedans, pomme, voisines_queue):
+                yield list(chemin)
+            return
+        suivants = [voisin(c, dd) for dd in DIRS]
+        suivants = [n for n in suivants
+                    if n in F and n not in dedans and n in dist and dist[n] <= reste_pas - 1]
+        suivants.sort(key=lambda n: (dist[n], -colle(n)))
+        for n in suivants:
+            chemin.append(n)
+            dedans.add(n)
+            yield from dfs(n, reste_pas - 1)
+            chemin.pop()
+            dedans.discard(n)
+            if compteur[0] > budget:
+                return
+
+    # longueurs de même parité d'abord (les plus naturelles sur la grille)
+    for extra in list(range(0, marge + 1, 2)) + list(range(1, marge + 1, 2)):
+        for c in dfs(h, dist[h] + extra):
+            yield c
+            return
+
+
+def rotations_posa(prefixe, F, queue, rng, max_iter):
+    """Complète `prefixe` en un chemin qui passe par toutes les cases de F et
+    finit sur une voisine de la queue. Extension gloutonne (vers la case la
+    moins accessible, règle de Warnsdorff) ; bloqué, on fait une rotation de
+    Pósa : la fin touche une case i du chemin, on renverse tout ce qui suit i.
+    Le préfixe, qui mène à la pomme, n'est jamais retourné."""
+    m = len(prefixe)
+    chemin = list(prefixe)
+    rang = {c: i for i, c in enumerate(chemin)}
+    voisines_queue = {voisin(queue, dd) for dd in DIRS}
+    for _ in range(max_iter):
+        fin = chemin[-1]
+        autour = [voisin(fin, dd) for dd in DIRS]
+        if len(chemin) == len(F):
+            if fin in voisines_queue:
+                return chemin
+        else:
+            libres = [n for n in autour if n in F and n not in rang]
+            if libres:
+                n = min(libres, key=lambda n: (
+                    sum(1 for dd in DIRS if voisin(n, dd) in F and voisin(n, dd) not in rang),
+                    rng.random()))
+                rang[n] = len(chemin)
+                chemin.append(n)
+                continue
+        pivots = [rang[w] for w in autour if w in rang and m - 1 <= rang[w] < len(chemin) - 2]
+        if not pivots:
+            return None
+        i = rng.choice(pivots)
+        chemin[i + 1:] = chemin[i + 1:][::-1]
+        for j in range(i + 1, len(chemin)):
+            rang[chemin[j]] = j
+    return None
+
+
+class Recompose:
+    """Cycle hamiltonien réécrit devant la tête à chaque pas."""
+
+    MARGE = 6           # pas de détour tolérés pour ne pas couper F
+    BUDGET = 3000       # nœuds explorés pour trouver ce chemin
+    MAX_ROTATIONS = 3000
+
+    def __init__(self, graine=None):
+        self.seq = list(CYCLE)
+        self.rang = dict(ORDRE)
+        self.rng = random.Random(graine)   # jamais le random global : c'est celui des pommes
+
+    def rel(self, h, c):
+        return (self.rang[c] - self.rang[h]) % CELLS
+
+    def recomposer(self, p):
+        corps = p.corps()
+        h, queue, pomme = corps[0], corps[-1], p.pomme()
+        T = self.rel(h, queue)
+        base_h = self.rang[h]
+        devant = [self.seq[(base_h + i) % CELLS] for i in range(1, T)]
+        F = set(devant)
+        if pomme not in F:
+            return
+        actuel = self.rel(h, pomme)
+        # Déjà au plus court : rien à gagner, on s'épargne la recherche.
+        if carte_distances(pomme, F | {h}).get(h, 0) >= actuel:
+            return
+        voisines_queue = {voisin(queue, dd) for dd in DIRS}
+        for prefixe in chemins_vers_pomme(h, pomme, F, voisines_queue, self.MARGE, self.BUDGET):
+            if len(prefixe) >= actuel:
+                return
+            nouveau = rotations_posa(prefixe, F, queue, self.rng, self.MAX_ROTATIONS)
+            if nouveau is None:
+                return
+            arriere = [self.seq[(base_h + i) % CELLS] for i in range(T, CELLS)]
+            seq = arriere + [h] + nouveau
+            # Vérification complète avant adoption : si elle échoue, on garde
+            # l'ancien cycle. La garantie ne dépend pas de la recherche.
+            if len(set(seq)) == CELLS and all(
+                    b in [voisin(a, dd) for dd in DIRS] for a, b in zip(seq, seq[1:] + seq[:1])):
+                self.seq = seq
+                self.rang = {c: i for i, c in enumerate(seq)}
+            return
+
+    def __call__(self, p):
+        self.recomposer(p)
+        h = p.corps()[0]
+        return direction_vers(h, self.seq[(self.rang[h] + 1) % CELLS])
+
+
+# Chaque partie reçoit une instance neuve : recompose garde son cycle en mémoire.
+ALGOS = {"dijkstra": lambda graine=None: algo_dijkstra,
+         "glouton": lambda graine=None: algo_glouton,
+         "cycle": lambda graine=None: algo_cycle,
+         "tapsell": lambda graine=None: algo_tapsell,
+         "recompose": Recompose}
 
 
 # ---------------------------------------------------------------- modes
-def partie_sans_fenetre(algo, graine, max_pas=200_000):
+def partie_sans_fenetre(nom, graine, max_pas=200_000):
     random.seed(graine)
+    algo = ALGOS[nom](graine)
     p = Partie()
     t_max = 0.0
     while p.fin is None and p.pas < max_pas:
@@ -279,7 +471,7 @@ def bench(noms, n_parties):
     print(f"{'algo':10s} {'victoires':>10s} {'score moy':>10s} {'min':>5s} {'pas moy':>9s}"
           f" {'pas/pomme':>10s} {'à 5 pas/s':>10s} {'calcul max':>11s}")
     for nom in noms:
-        res = [partie_sans_fenetre(ALGOS[nom], g) for g in range(n_parties)]
+        res = [partie_sans_fenetre(nom, g) for g in range(n_parties)]
         vict = sum(r[0] == "victoire" for r in res)
         scores = [r[1] for r in res]
         pas = statistics.mean(r[2] for r in res)
@@ -289,10 +481,10 @@ def bench(noms, n_parties):
               f" {minutes:7.1f} min {max(r[3] for r in res) * 1000:8.1f} ms", flush=True)
 
 
-def dessiner_cycle(surface):
+def dessiner_cycle(surface, seq):
     """Tracé discret du cycle hamiltonien, pour voir ce que suit le serpent."""
     couleur, c = (40, 60, 55), base.CELL_SIZE
-    for a, b in zip(CYCLE, CYCLE[1:] + CYCLE[:1]):
+    for a, b in zip(seq, seq[1:] + seq[:1]):
         if abs(a[0] - b[0]) + abs(a[1] - b[1]) != 1:
             continue                              # passage par le bord
         pa = (a[0] * c + c // 2, a[1] * c + c // 2 + base.SCORE_PANEL_HEIGHT)
@@ -302,7 +494,7 @@ def dessiner_cycle(surface):
 
 def play(nom, speed, trace):
     """La boucle de main() du jeu de base, l'algorithme à la place du clavier."""
-    algo = ALGOS[nom]
+    algo = ALGOS[nom]()
     pygame.init()
     screen = pygame.display.set_mode((base.SCREEN_WIDTH, base.SCREEN_HEIGHT))
     pygame.display.set_caption(f"Snake algo ({nom}) - groupe Abricot")
@@ -317,7 +509,7 @@ def play(nom, speed, trace):
                 pygame.quit()
                 return
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and p.fin:
-                p, debut = Partie(), time.time()
+                p, debut, algo = Partie(), time.time(), ALGOS[nom]()
         if p.fin is None:
             p.jouer(algo(p))
             if p.fin:
@@ -329,7 +521,7 @@ def play(nom, speed, trace):
                                                          base.SCREEN_WIDTH, base.SCREEN_WIDTH))
         base.draw_grid(screen)
         if trace:
-            dessiner_cycle(screen)
+            dessiner_cycle(screen, getattr(algo, "seq", CYCLE))
         p.apple.draw(screen)
         p.snake.draw(screen)
         base.display_info(screen, font_main, p.snake, debut)
@@ -345,9 +537,9 @@ def play(nom, speed, trace):
 
 def main():
     parser = argparse.ArgumentParser(description="Snake torique résolu par algorithme.")
-    sub = parser.add_subparsers(dest="mode", required=True)
+    sub = parser.add_subparsers(dest="mode")
     p_play = sub.add_parser("play", help="regarder une partie")
-    p_play.add_argument("--algo", choices=ALGOS, default="tapsell")
+    p_play.add_argument("--algo", choices=ALGOS, default="recompose")
     p_play.add_argument("--speed", type=int, default=base.GAME_SPEED,
                         help=f"images/s à l'affichage (défaut {base.GAME_SPEED}, la vitesse du jeu ; "
                              "seule la cadence d'affichage change, pas la partie)")
@@ -355,7 +547,8 @@ def main():
     p_bench = sub.add_parser("bench", help="mesurer sans fenêtre")
     p_bench.add_argument("--algo", choices=ALGOS, nargs="+", default=list(ALGOS))
     p_bench.add_argument("--games", type=int, default=30)
-    args = parser.parse_args()
+    # Sans argument : démonstration de l'algo retenu, comme snake-ia.py.
+    args = parser.parse_args(sys.argv[1:] or ["play"])
 
     if args.mode == "play":
         play(args.algo, args.speed, args.trace)
