@@ -1,0 +1,17 @@
+20:10 Premier prompt pour lui exposer la nouvelle consigne avec l'ancien contexte. On lui a demandé trois plans d'implémentation : un en 30 min, un en 1 h et un en 1 h 30. L'idée est que l'on accompagne la réflexion au fur et à mesure.
+
+20:15 Premier test, il n'a rien compris. Deuxième prompt : on lui demande de faire un premier MVP en utilisant un algorithme hamiltonien. On l'enlèvera après.
+
+20:20 Premiers bons résultats. Recherche des meilleurs algorithmes et des approches déjà utilisées dans le passé.
+
+20:30 Il n'a apparemment pas compris qu'il pouvait se déplacer vers la gauche.
+
+20:34 Les performances s'améliorent.
+
+21:00 Lancement d'une comparaison de 35 configurations : cycle hamiltonien, BFS sécurisé, raccourcis avec plusieurs géométries et seuils, anticipation sur trois coups et réparation locale du cycle. Chaque configuration joue 100 parties. Cell Tree n'est pas testé car son pavage 2×2 nécessite une adaptation à notre grille torique 15×15.
+
+21:03 Fin de la campagne : 6 500 parties sauvegardées, dont 1 000 nouvelles parties pour chacun des trois finalistes. Le meilleur résultat mesuré reste le cycle hamiltonien avec raccourcis, seuil 112 et géométrie 3 : 223 points sur chacune des 1 000 parties de validation. Durée moyenne théorique à 5 Hz : 22 min 10 s, soit 5,965 s par pomme. Le gain face à notre précédente version est de 0,42 % ; les méthodes plus complexes n'ont pas fait mieux.
+
+21:06 Vérification du lancement avec python snake-algo.py : le jeu s'ouvre et joue seul avec la configuration retenue, le rendu d'origine et la clock à 5 Hz. Les 26 tests passent. Les scores individuels, paramètres et graphiques comparatifs sont conservés pour analyser les résultats.
+
+21:07 Publication de la meilleure version et des résultats sur main. Les règles du jeu restent inchangées ; les temps des simulations sont présentés comme des durées théoriques à 5 Hz, distinctes du temps réel de calcul.
