@@ -22,8 +22,9 @@ C'est ici que vous devez décrire votre timeline de la manière suivante (HH:MM 
 20:55 : Une version optimisé de l'algorithme glouton (Foncer vers la pomme, mais seulement si on peut encore rejoindre sa queue et Au-delà de 55 % de la grille, ne plus viser la pomme du tout) nous assure la victoire dans 10% des parties en 950sec
 20:55 : Tom me pique le clavier et essaye cette idée "Le but lorsque l'on se poursuit plus les pommes 55% passer on cherche egalement a reduire le nombre de trou pour que toutes les prochaines pommes soit devant lui et pas au milieu piege dans son corp", spoiler elle ne fonctionnera pas et aura de moins bon résultats que la précédente
 21:17 : Claude devient autonome et essaye un autre truc "longer les murs et son propre corps" : victoire en 992sec (2 / 300)
+21:18 : On va tenter de faire tourner le plus de partie possible avec un algorithme qui a peu de % de victoire mais qui va le plus vite possible
 21:19 : victoire en 835 seconde on a repris le glouton boosté et on lance 20000 partie à la fois sur le macbook m3pro tah les fous (Tom a la rage qu'un mac fonctionne si bien)
 21:21 : 763 secondes pour la victoire
 
-20:56 : On va tenter de faire tourner le plus de partie possible avec un algorithme qui a peu de % de victoire mais qui va le plus vite possible
+Best seed : python Fraise/algo/snake-algo.py rapide 20 --algo glouton --graine 1127 --seuil 0.6 --patience 0
 
