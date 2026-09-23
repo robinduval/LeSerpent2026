@@ -214,3 +214,63 @@ réseau 11→256→3 le CPU est de toute façon plus rapide que le transfert ver
 Cela économise ~2,3 Go de téléchargement.
 
 `.venv/` ne doit **pas** être commité (voir `.gitignore`).
+
+## 10. Le filet de sécurité — ce qu'il est, et ce qu'il n'est pas
+
+Appliqué à l'inférence seulement, sur un modèle déjà entraîné. Le réseau classe les trois
+actions ; le filet retient la première qui satisfait un critère de survie. **Il n'a jamais le
+droit de choisir une direction — seulement d'opposer un veto.**
+
+Deux critères, du plus fort au plus faible :
+
+1. **Queue joignable** — après ce coup, existe-t-il encore un chemin de la tête jusqu'à sa
+   propre queue ? Tant que l'invariant tient, le serpent peut suivre sa queue indéfiniment,
+   donc il n'est jamais piégé.
+2. **Assez de place** — la poche contient au moins la longueur du corps. Plus faible : une poche
+   peut être assez grande et pourtant sans issue, parce que la queue n'y est pas.
+
+Le passage de (2) à (1) a valu **+72 points de moyenne sans réentraîner** (108,9 → 180,6).
+
+### Le contrôle qui rend le résultat défendable
+`--politique hasard` remplace le classement du réseau par un tirage aléatoire, et mesure donc ce
+que le filet accomplit **seul**. Résultat sur 120 parties : moyenne 65,4, **médiane 1**,
+écart-type 98,8, meilleure 221.
+
+Autrement dit le filet seul décroche parfois un score énorme, mais presque jamais. La politique
+apprise porte la médiane de 1 à 184. **À présenter toujours avec les trois chiffres** — 65 filet
+seul, 82 apprentissage seul, 181 les deux — sinon on surestime l'un ou l'autre.
+
+## 11. Leçons de méthode — les erreurs commises et ce qu'elles ont coûté
+
+Quatre fois dans ce projet, une hypothèse cohérente a été traitée comme une conclusion.
+
+1. **Le squelette « corrigé ».** Six modifications appliquées à `serpent-algo.py` avant de savoir
+   qu'il faisait foi. Coût : une matrice complète de résultats à jeter, parce qu'elle mesurait un
+   jeu à murs qui n'existe pas.
+2. **L'adresse MAC déduite.** Le préfixe `9C:7B:EF` étant enregistré HP et la machine ayant été vue
+   deux heures plus tôt, la déduction semblait solide. Elle était fausse : le script `wake-z4g4`,
+   avec la bonne MAC, existait déjà dans le dépôt JurAI et était installé sur le Raspberry Pi.
+3. **Le profilage extrapolé.** `train_step` mesuré sur UN échantillon (763 us, dominé par la
+   surcharge de framework) a servi à conclure « le GPU ne peut pas aider ». Mais l'entraîneur
+   vectorisé travaille sur des lots de 4096, régime où le GPU gagne x6,9.
+4. **Le contrôle sur 5 parties.** Conclusion « le filet seul n'accomplit rien » tirée d'un
+   échantillon de 5, pour un écart-type de 105. Sur 120 parties la moyenne est 65, pas 1,6.
+
+Le remède qui a marché, à chaque fois : **mesurer au lieu d'extrapoler, et regarder la dispersion
+avant d'annoncer une moyenne.** Les deux tests de parité de `snake-ia-gpu.py` ont d'ailleurs
+attrapé deux vrais bugs qu'un simple contrôle de vitesse aurait laissés passer.
+
+## 12. Infrastructure d'entraînement — z4g4
+
+z4g4 tourne sous **Talos Linux** : OS immuable, sans SSH ni shell, par conception. Tout passe par
+l'API Kubernetes.
+
+- Réveil : `ssh erwen@giga-rasp.tailecd143.ts.net wake-z4g4` (script du dépôt JurAI, MAC
+  `84:a9:3e:88:99:7c`), puis `status-z4g4`. Deux à quatre minutes.
+- **`runtimeClassName: nvidia` est obligatoire** pour tout pod qui veut le GPU. Sans elle,
+  Kubernetes réserve bien la carte (`nvidia.com/gpu: 1` apparaît dans les limites) mais
+  `torch.cuda.is_available()` reste faux et le conteneur retombe silencieusement sur CPU.
+- Carte : GeForce GTX 1070, 8,5 Go, capacité 6.1, pilote 580.173.02.
+- Le plus utile n'est pas le GPU mais les **12 cœurs** : ils permettent de lancer plusieurs
+  graines de front, donc d'obtenir des barres d'erreur — impossible sur le portable.
+

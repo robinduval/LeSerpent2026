@@ -56,60 +56,87 @@ Livrable du 16/09 : `snake-ia.py` (Deep Q-Learning, PyTorch). Notes de conceptio
 21:45 : Constatation contre-intuitive : le port CORRIGÉ apprend MOINS BIEN que le prototype bugué (moy50 37,6 contre 73,4 à la partie 150). Hypothèse : avec gamma = 0,9, un potentiel de magnitude Phi produit une taxe constante (gamma-1)*Phi à chaque pas, sans rapport avec le progrès. Réparer la feature morte a doublé Phi, donc doublé la taxe.
 21:47 : Hypothèse vérifiée par mesure : le façonnage rapporte -0,18 par pas en moyenne, soit -180 sur une partie de 1000 pas, quand une pomme vaut +10. L'agent n'apprenait plus à manger, il apprenait que vivre coûte cher. Correctif : F = Phi(s') - Phi(s) au lieu de gamma*Phi(s') - Phi(s). Dérive ramenée à -0,0017 par pas. On perd la garantie formelle d'invariance de la politique optimale, on gagne un signal qui récompense le progrès au lieu de pénaliser l'existence.
 21:55 : Config `potentiel` + `conscient` évaluée sur 100 parties. Sans filet 82,2 (contre 53,9 pour le prototype bugué : la correction de la taxe vaut +28 points). Avec filet 108,9, médiane 109, record 134, pire partie 74, 15,7 pas/pomme. Devient la configuration de démonstration ; modèle figé dans `model/DEMO-snake-ia.pth`. Lancement sans option revérifié de bout en bout.
-## Résultats — vraies règles (tore)
-Métrique : **score d'abord, temps de jeu à égalité de score**. Le temps est le temps *de jeu*
-(5 pas/s), pas le temps de calcul. 100 parties par ligne, politique gloutonne.
-Plan factoriel 2 (barème) x 2 (état) x 2 (filet de sécurité).
-| Config | Filet | Score moy. | Record | Pas/pomme | t(20) | t(40) | % >= 40 |
-|---|---|---|---|---|---|---|---|
-| A — sujet, état simple *(le sujet à la lettre)* | non | 26,6 | 56 | 11,6 | 44,2 s | 97,0 s | 13 % |
-| A | oui | 83,7 | 114 | 17,3 | 43,7 s | 99,8 s | 99 % |
-| B — efficace, état simple | non | 27,4 | 59 | 11,8 | 44,0 s | 98,0 s | 11 % |
-| B | oui | 89,7 | 118 | 18,4 | 44,2 s | 100,3 s | 100 % |
-| C — efficace, état étendu | non | 71,3 | 117 | 19,6 | 47,1 s | 105,2 s | 90 % |
-| **C** | **oui** | **94,2** | **131** | 23,7 | 47,3 s | 108,5 s | 96 % |
-| D — sujet, état étendu | non | 49,2 | 102 | 22,3 | 60,7 s | 143,6 s | 63 % |
-| D | oui | 82,9 | 118 | 29,1 | 59,5 s | 144,7 s | 92 % |
-| **E — potentiel, état conscient** | non | **82,2** | 120 | 12,6 | — | 75,4 s | 90 % |
-| **E** | **oui** | **108,9** | **134** | 15,7 | — | 75,6 s | **100 %** |
+17:05 : Filet de sécurité renforcé : au lieu de « cette poche contient-elle mon corps ? », le critère devient « existe-t-il encore un chemin jusqu'à ma propre queue ? ». Strictement plus fort — une poche peut être assez grande et pourtant sans issue si la queue n'y est pas. Tant que l'invariant tient, le serpent peut suivre sa queue indéfiniment, donc il n'est jamais piégé. L'ancien critère reste en repli.
+17:20 : Effet mesuré sur le MÊME modèle figé, sans une seule partie de réentraînement : score moyen 108,9 -> 180,6, médiane 109 -> 184, record 134 -> 213 sur 222, pire partie 74 -> 121. La pire des 100 parties fait désormais mieux que l'ancienne moyenne. Contrepartie lourde : 132,9 pas par pomme contre 15,7, le serpent passant son temps à suivre sa queue pour préserver l'invariant.
+17:25 : Contrôle d'honnêteté — politique ALÉATOIRE avec ce même filet renforcé, sur 5 parties : 1,60 de moyenne. Conclusion tirée un peu vite : le filet seul n'accomplirait rien.
+17:50 : Le même contrôle sur 40 parties dit l'inverse : moyenne 87,33, écart-type 105,54, médiane 3, MEILLEURE 221 sur 222. Cinq parties étaient dérisoires face à un écart-type de 105. La distribution est bimodale — la plupart des parties ne donnent rien, mais le filet seul tombe parfois dans un régime de suivi de queue qui remplit presque la grille, et son pic (221) dépasse celui de la politique apprise (213).
+17:52 : Reformulation de ce que l'apprentissage apporte : non pas le pic, mais la RÉGULARITÉ. Filet seul : médiane 3, écart-type 105. Avec la politique apprise : médiane 184, écart-type 15. Les trois chiffres à retenir : 87,3 (filet seul, très instable), 82,2 (apprentissage seul), 180,6 (les deux).
+17:30 : Confirmation que le plateau n'était pas un manque d'entraînement. Sur 8 graines indépendantes les records tenaient dans 121-129, soit ±3 % : une borne aussi serrée est une limite de conception, pas de durée. Changer le critère de survie l'a fait sauter d'un coup, sans réentraîner.
+18:00 : Quatre chantiers lancés en parallèle sur z4g4 (pod atelier persistant, GPU GTX 1070) : 5 graines d'entraînement, 50 000 parties sur GPU, 400 parties de chasse à la victoire, et le contrôle à politique aléatoire.
+19:00 : Le contrôle aléatoire sur 120 parties se stabilise à 65,36 de moyenne, médiane 1, écart-type 98,77, meilleure 221. Confirme la correction de 17:50 et affine le chiffre.
+19:40 : Chasse à la victoire terminée — 400 parties avec la politique apprise : moyenne 181,15, médiane 184, meilleure 210, pire 61. AUCUNE grille remplie. Sur 520 parties au total ce soir (400 + 120), zéro victoire, alors que deux parties ont atteint 210 et 221. Le dernier dixième de grille est hors d'atteinte d'une politique réactive.
+20:00 : Entraînement long terminé — 50 000 parties sur GPU en 71 minutes : moy50 39,24, record 114. C'est MOINS BON que 800 parties de l'entraîneur séquentiel (moy50 ~70). La question « faut-il entraîner plus ? » est donc tranchée, et dans le sens inverse de l'intuition : ce n'est pas la durée qui manquait, et l'entraîneur vectorisé plafonne plus bas quel que soit le budget, faute d'un rapport gradient/expérience suffisant.
+20:14 : Barre d'erreur du filet renforcé : 5 graines indépendantes évaluées sur 25 parties chacune donnent 175,2 · 176,0 · 178,2 · 181,2 · 184,8, soit une moyenne de 179,07 et un écart-type de 3,9. Le résultat est solidement reproductible — bien plus stable que les moyennes d'entraînement, qui s'étalaient de 60 à 76.
+20:18 : DEMO_SPEED porté de 40 à 120 images/s. Le filet renforcé fait durer une partie ~24 000 pas, soit 10 minutes d'affichage à 40 ; on retombe à ~3 minutes. GAME_SPEED reste à 5 et demeure la référence de toutes les mesures.
+22:10 : Observation signalée : le serpent tourne en rond. Mesure sur trois parties — le schéma est identique et sans ambiguïté. Phase productive : 22 à 28 % de la partie, à ~30 pas par pomme. Puis boucle stérile durant EXACTEMENT le timeout du jeu (18 701 pas pour 100 x 187 de longueur), soit 72 à 78 % de la partie, score déjà figé.
+22:12 : Correction d'un chiffre trompeur du README : les "133,7 pas par pomme" mélangeaient la phase productive et la phase morte. L'efficacité réelle en jeu est de ~30 pas par pomme, pour un plancher théorique de ~8.
+22:15 : Diagnostic : vers 185 de score, la pomme apparaît dans une poche qu'aucun chemin ne peut atteindre sans rompre l'invariant de queue joignable. Le filet oppose donc son veto indéfiniment, et l'agent préfère attendre la mort plutôt que tenter quoi que ce soit.
+22:30 : Ajout du RISQUE BORNÉ : au-delà de N pas sans manger, le filet lâche l'invariant et prend le coup NON LÉTAL le plus proche de la pomme. Ce n'est pas un suicide — la mort immédiate reste exclue ; on accepte seulement de pouvoir s'enfermer, ce qui au pire avance une fin déjà certaine.
+22:45 : Réglage du seuil. Sur 25 parties, 1200 semblait faire gagner 4 points ; sur 60 parties l'écart disparaît — c'était du bruit. Les seuils bas dégradent en revanche nettement : 300 donne 167,4 et 600 donne 169,9, car ils se déclenchent pendant des attentes légitimes (99e centile des attentes productives : 257 pas, maximum observé 859).
+22:50 : Seuil retenu 2000. Score INCHANGÉ (181,27 sur 60 parties contre 181,15 sur 400 sans risque) mais parties 3 fois plus courtes : 8 156 pas au lieu de 24 100. Le gain n'est pas un gain de points, c'est la suppression d'une phase morte qui occupait les trois quarts de chaque partie.
+22:55 : Démonstration reconfigurée : DEMO_SPEED ramené de 120 à 60 images/s puisque les parties sont plus courtes. Lancement sans option vérifié — score 187 en 9 305 pas, 154 secondes d'affichage, sans temps mort.
+## Résultats
+Métrique : **score d'abord, temps de jeu à égalité**. Le temps est le temps *de jeu*
+(GAME_SPEED = 5 pas/s), jamais le temps de calcul. Jeu torique 15x15, scoring inchangé.
+### Configuration retenue
+`--bareme potentiel --etat conscient --securite` — c'est elle que lance `python snake-ia.py`
+sans argument.
+| Mesure | Valeur |
+|---|---|
+| Score moyen (400 parties) | **181,15** (écart-type 16,23) |
+| Médiane | 184 |
+| Meilleure partie | **210** sur 222 |
+| Pire partie sur 400 | 61 |
+| Reproductibilité (5 graines x 25 parties) | 175,2 · 176,0 · 178,2 · 181,2 · 184,8 → **179,07 ± 3,9** |
+| Grilles remplies | **0 / 520** |
+Contre le sujet appliqué à la lettre (26,6) : **x6,8**.
+### Ce qui fait le résultat — décomposition mesurée
+| | Score moyen | Médiane | Écart-type |
+|---|---|---|---|
+| Filet renforcé seul *(politique aléatoire, 120 parties)* | 65,4 | **1** | 98,8 |
+| Apprentissage seul *(sans filet)* | 82,2 | 88 | 26,5 |
+| **Les deux** | **181,2** | **184** | **16,2** |
+Le filet seul atteint parfois 221 — mieux que le meilleur de la politique apprise — mais sa
+médiane est à 1 : il tombe par hasard dans un régime de suivi de queue qui remplit presque la
+grille, une fois sur quelques dizaines de parties. **Ce que l'apprentissage apporte n'est donc
+pas le pic, c'est la régularité** : médiane 184 contre 1, écart-type divisé par 6.
+### Trois questions tranchées ce soir
+1. **Faut-il entraîner plus longtemps ? Non, et c'est mesuré.** 50 000 parties sur GPU donnent
+   moy50 39,24 et record 114 — moins bon que 800 parties de l'entraîneur séquentiel (~70). Le
+   plateau observé n'était pas un manque de budget.
+2. **Faut-il revoir les récompenses ? Non plus.** Le plan factoriel l'avait déjà montré : à état
+   égal, changer de barème fait 26,6 → 27,4, soit un point. À barème égal, la perception fait
+   27,4 → 71,3.
+3. **Où était le levier ? Dans le critère de survie.** Passer de « cette poche contient-elle mon
+   corps ? » à « puis-je encore atteindre ma queue ? » fait **+72 points sans une seule partie de
+   réentraînement** (108,9 → 180,6). Une limite qui résiste à l'entraînement et aux récompenses,
+   mais cède à un changement de critère, était une limite de conception.
+### Le prix à payer, et ce qu'il était vraiment
+Le chiffre de « 133,7 pas par pomme » d'abord rapporté était trompeur : il moyennait deux phases
+très différentes. En jeu réel l'agent tourne à **~30 pas par pomme** (plancher théorique ~8), et
+71 % des pommes sont atteintes en moins de 30 pas. Mais chaque partie se terminait par une
+**boucle stérile occupant 72 à 78 % du temps** : passé ~185 de score, la pomme apparaît dans une
+poche qu'aucun chemin ne peut atteindre sans rompre l'invariant, le filet oppose son veto
+indéfiniment, et l'agent attend la mort par timeout, score figé depuis longtemps.
 
-**Configuration retenue : E + filet** — score moyen **108,9**, médiane 109, record **134**,
-pire partie sur 100 : **74**. C'est elle que lance `python snake-ia.py` sans argument.
-Contre le sujet appliqué à la lettre (A sans filet, 26,6) : **x4,1**. Elle est aussi la plus
-rapide à score égal : 75,6 s pour 40 points contre 97,0 s pour A et 108,5 s pour C.
+Le **risque borné** (`--risque N`) supprime cette phase : au-delà de N pas sans manger, on lâche
+l'invariant pour le coup non létal le plus proche de la pomme. Score **inchangé** (181,27 contre
+181,15) mais parties **3 fois plus courtes** (8 156 pas contre 24 100). Le seuil compte : à 300 ou
+600 le mécanisme se déclenche pendant des attentes légitimes et coûte une dizaine de points.
 
-### Ce que E ajoute
-- **Où est vraiment la pomme** : offset signé normalisé dans le repère du serpent (devant /
-  sur le côté) + distance torique, au lieu de 4 booléens qui donnent une direction sans
-  distance et ignorent que le bord est souvent le chemin court.
-- **Conscience de l'espace** : espace atteignable par direction, espace total, longueur
-  occupée, et « puis-je encore rejoindre ma queue ? ».
-- **Récompense dérivée de la perception** : `F = Phi(s') - Phi(s)` avec
-  `Phi = 2*proximité_pomme + 1*espace_libre`. On ne récompense plus des primes arbitraires
-  mais l'amélioration de ce que l'agent voit réellement.
-
-### Deux pièges rencontrés en chemin, tous deux mesurés
-1. **Features mortes.** Dans le prototype, `bfs()` partait de la tête — qui occupe sa propre
-   case — donc il rendait toujours zéro. Deux features sur seize et un terme du potentiel
-   étaient muets sans que rien ne le signale. Un bon score ne prouve pas que le code fait ce
-   qu'on croit : il a fallu tracer l'écart-type de chaque feature pour le voir.
-2. **La taxe du façonnage.** Réparer ces features a d'abord *dégradé* l'apprentissage. Avec
-   `gamma < 1`, la forme théorique `gamma*Phi' - Phi` impose une taxe constante `(gamma-1)*Phi`
-   à chaque pas : mesurée à **-0,18 par pas, soit -180 par partie**, contre +10 pour une pomme.
-   Réparer la feature avait doublé `Phi`, donc doublé la taxe. Passer à `Phi' - Phi` supprime
-   la dérive (-0,0017 par pas) et fait gagner **+28 points** de moyenne sans filet.
-*(C + filet, 94,2 / record 131, était la meilleure configuration avant l'ajout de E.)*
-### Ce que le plan factoriel permet d'attribuer
-1. **Le filet de sécurité est le levier dominant** : à lui seul il fait passer le témoin de 26,6 à 83,7 (x3,1). Il ne choisit jamais la direction — il oppose un veto aux actions qui mènent dans une poche trop petite pour le corps.
-2. **La perception vaut plus que la récompense.** À état égal, changer le barème ne donne presque rien (A 26,6 -> B 27,4). À barème égal, le flood-fill fait tout (B 27,4 -> C 71,3). L'agent ne mourait pas de mauvaises intentions mais d'aveuglement.
-3. **Les leviers interagissent, et le sens dépend des règles.** Sur des règles à murs mortels, "barème sujet + état étendu" s'effondrait à 0,3 de moyenne : l'agent, devenu assez lucide, avait appris à tourner en rond pour encaisser les +0,1 par déplacement sans jamais manger. Sur le tore, la même combinaison donne 49,2. **La faille de récompense n'était pas dans le barème seul ni dans l'état seul, mais dans leur croisement avec les règles du jeu.** Seul un plan complet la rend visible.
-4. **Le ratio brut est une métrique piégée.** Il récompense l'agent qui meurt tôt, avant que les pommes ne deviennent coûteuses : le témoin "gagne" en pommes/s (0,423 contre 0,235) tout en marquant 3,5 fois moins. Comparer à score égal — colonnes t(20) et t(40) — annule l'artefact : le filet n'y coûte presque aucun temps.
+Reste que sous une métrique de ratio score/temps, la stratégie entière serait perdante. **Le choix
+de métrique décide du résultat** — c'est le principal enseignement méthodologique du projet.
+### Ce qui n'a pas été atteint
+**Zéro grille remplie sur 520 parties**, alors que deux parties ont atteint 210 et 221. Le
+dernier dixième de grille demande de planifier plusieurs dizaines de coups à l'avance, ce qu'une
+politique réactive à 16 entrées ne peut pas représenter, même parfaitement entraînée. C'est le
+domaine de `snake-algo.py` et du cycle hamiltonien, la semaine prochaine.
 ### Reproduire
 ```bash
-.venv/bin/python snake-ia.py train --games 400 --bareme efficace --etat etendu
-.venv/bin/python snake-ia.py bench --games 100 --bareme efficace --etat etendu --securite
-.venv/bin/python snake-ia.py play  --games 5   --bareme efficace --etat etendu --securite
+python snake-ia.py                                   # démonstration, ~3 min
+python snake-ia.py bench --games 100 --bareme potentiel --etat conscient --securite
+python snake-ia.py bench --games 100 --bareme potentiel --etat conscient --securite --politique hasard
+python snake-ia.py train --games 800 --bareme potentiel --etat conscient
 ```
-Courbes et logs par configuration dans `model/`. Les modèles entraînés avant la découverte du
-tore sont conservés dans `model/obsolete-murs/` : ils portent sur des règles qui n'existent pas.
+`--politique hasard` est le contrôle : il mesure ce que le filet accomplit sans apprentissage.
 Environnement : Python 3.13.14, torch 2.14.0+cpu, pygame 2.6.1. Conception : `AGENTS.md`.
