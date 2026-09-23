@@ -15,7 +15,7 @@ GRID_SIZE = 15
 # Taille d'une cellule en pixels
 CELL_SIZE = 30
 # Vitesse de jeu (images par seconde)
-GAME_SPEED = 30
+GAME_SPEED = 5
 # Vitesse d'origine du jeu : référence du chronomètre (vitesse x1)
 BASE_SPEED = 5
 
@@ -661,7 +661,7 @@ def bench(strategy_name, games, seed):
 
 # --- BOUCLE PRINCIPALE DU JEU ---
 
-def main(strategy_name=GreedyStrategy.name):
+def main(strategy_name=HybridStrategy.name):
     """Fonction principale : le serpent est piloté par l'agent (touches 1-4 pour changer d'algo)."""
     pygame.init()
     
@@ -755,7 +755,7 @@ def main(strategy_name=GreedyStrategy.name):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Snake piloté par un algorithme déterministe.")
-    parser.add_argument("--strategy", choices=sorted(STRATEGIES), default=GreedyStrategy.name)
+    parser.add_argument("--strategy", choices=sorted(STRATEGIES), default=HybridStrategy.name)
     parser.add_argument("--bench", type=int, metavar="N", help="joue N parties sans affichage et affiche les statistiques")
     parser.add_argument("--seed", type=int, default=0, help="graine aléatoire du benchmark")
     parser.add_argument("--speed", type=float,
