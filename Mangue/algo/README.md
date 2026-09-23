@@ -1,0 +1,13 @@
+19h55: Lecture du code et recherches des pièges et spécificités consigné dans un fichier Markdown
+20h00: Recherche d'articles scientifiques traitant du sujet et permettant potentiellement d'identifier des solutions optimales ou d'obtenir des pistes.
+20h05: 3 algos identifié, Cycle hamiltonien perturbé, Cell tree et DHCR.
+20h10: Début de l'implémentation de différents algos dans le but d'observer les différents résultats obtenus.
+20h30: Arret maladroit du prompt qui tournait avec 3 sous agents parallèles depuis plus de 20 minutes
+20h32: Reprise du travail la ou il s'est arrêté
+20h50: Ca tourne encore...
+21h06: Un des 3 agents a terminé, mais ca commence a être long...
+21h18: Lancement d'une autre IA en parallèle pour sécuriser un résultat....
+21h29: Claude tourne toujours depuis 1h...
+21h31: 1h que ca tourne en vrai c chiant mdr
+21h36: Premier résultat (enfin) avec l'IA de backup avec le cycle hamiltonien perturbé, méthode Tapsell 2 temps 25:40 et 22:38.
+21h45: On a laissé GPT-5.6 Sol freestyle sur le code pour trouver une opti. On a l'impression qu'il pause la clock pour réfléchir et le résultat est moins bien.
