@@ -1,0 +1,21 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.3)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+CAMPAGNE 200 graines (0-199), config combo/0.20/rep6/steer/deep
+  parties finies : 200/200 (100.0%)
+  pas moyen 6108 | temps moyen 1221.6s | ratio moyen 0.1825
+  ecart-type : 331 pas
+
+  LES 10 MEILLEURES PARTIES :
+    graine 171 | score 223 | 5314 pas |  1062.8s (17:42) | ratio 0.2098 | FINIE
+    graine 129 | score 223 | 5352 pas |  1070.4s (17:50) | ratio 0.2083 | FINIE
+    graine  69 | score 223 | 5356 pas |  1071.2s (17:51) | ratio 0.2082 | FINIE
+    graine  38 | score 223 | 5373 pas |  1074.6s (17:54) | ratio 0.2075 | FINIE
+    graine  10 | score 223 | 5403 pas |  1080.6s (18:00) | ratio 0.2064 | FINIE
+    graine  41 | score 223 | 5418 pas |  1083.6s (18:03) | ratio 0.2058 | FINIE
+    graine   2 | score 223 | 5505 pas |  1101.0s (18:21) | ratio 0.2025 | FINIE
+    graine  75 | score 223 | 5505 pas |  1101.0s (18:21) | ratio 0.2025 | FINIE
+    graine 185 | score 223 | 5511 pas |  1102.2s (18:22) | ratio 0.2023 | FINIE
+    graine 151 | score 223 | 5519 pas |  1103.8s (18:23) | ratio 0.2020 | FINIE
+
+  LA PIRE :
+    graine  78 | score 223 | 6919 pas | 1383.8s | ratio 0.1612

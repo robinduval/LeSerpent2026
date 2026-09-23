@@ -1,0 +1,11 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.3)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+technique                             finies                       MEILLEURE PARTIE
+Essai 1  cycle hamiltonien pur       20/20  graine 11 score 223  11409 pas 38:01 ratio 0.0977 FINIE
+Essai 2  Tapsell (raccourcis)        20/20  graine 14 score 223  11169 pas 37:13 ratio 0.0998 FINIE
+Essai 3  plus court chemin DAG       20/20  graine 16 score 223  12242 pas 40:48 ratio 0.0911 FINIE
+Essai 4  glouton pur                  0/20  graine  2 score  36    276 pas 00:55 ratio 0.6522 MORT 
+Essai 6  hybride trajet complet      19/20  graine  3 score 223  10867 pas 36:13 ratio 0.1026 FINIE
+Essai 7  Tapsell -> cycle a 50%      20/20  graine 16 score 223   6916 pas 23:03 ratio 0.1612 FINIE
+Essai 10 DHCR oriente                20/20  graine  0 score 223   5964 pas 19:52 ratio 0.1870 FINIE
+Essai 12 Tapsell -> DHCR profond     20/20  graine 10 score 223   5403 pas 18:00 ratio 0.2064 FINIE
