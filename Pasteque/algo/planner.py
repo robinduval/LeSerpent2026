@@ -36,6 +36,7 @@ Priorité : SURVIE > PROGRESSION VERS 100 > RAPIDITÉ > ESPACE / OPTIONS.
 from __future__ import annotations
 
 import heapq
+import random
 import time
 from dataclasses import dataclass, field, fields
 from typing import Optional
@@ -126,6 +127,23 @@ def build_hamiltonian_cycle() -> tuple[int, ...]:
     return tuple(order)
 
 
+def build_helical_cycle() -> tuple[int, ...]:
+    """Cycle hélicoïdal propre au tore : 14 pas à droite puis 1 vers le bas,
+    15 fois. Chaque ligne commence une colonne plus à gauche que la
+    précédente ; après 15 lignes, le dernier pas (wrap vertical) ferme le
+    cycle. Forme très différente du serpentin : plus de variantes à essayer
+    pour rejoindre un cycle avec un corps long."""
+    order = []
+    x = y = 0
+    for _ in range(H):
+        for _ in range(W):
+            order.append(cell_of(x, y))
+            x = (x + 1) % W
+        x = (x - 1) % W
+        y = (y + 1) % H
+    return tuple(order)
+
+
 def validate_cycle(cycle) -> None:
     assert len(cycle) == N, "le cycle doit couvrir les 225 cases"
     assert len(set(cycle)) == N, "chaque case doit apparaître une seule fois"
@@ -160,13 +178,21 @@ CYCLE_INDEX = _index_of(CYCLE)
 # puis 225 translations appliquées à la volée => 3600 cycles candidats.
 # Toutes préservent l'adjacence torique ; chaque base est revalidée.
 CYCLE_BASES = []
-for _swap in (False, True):
-    for _fx in (False, True):
-        for _fy in (False, True):
-            _cyc = tuple(_dihedral(c, _swap, _fx, _fy) for c in CYCLE)
-            for _v in (_cyc, _cyc[::-1]):
-                validate_cycle(_v)
-                CYCLE_BASES.append((_v, _index_of(_v)))
+_seen_bases = set()
+for _family in (CYCLE, build_helical_cycle()):
+    for _swap in (False, True):
+        for _fx in (False, True):
+            for _fy in (False, True):
+                _cyc = tuple(_dihedral(c, _swap, _fx, _fy) for c in _family)
+                for _v in (_cyc, _cyc[::-1]):
+                    validate_cycle(_v)
+                    # Dédoublonnage à rotation près (même cycle, autre départ).
+                    _i = _v.index(0)
+                    _key = _v[_i:] + _v[:_i]
+                    if _key in _seen_bases:
+                        continue
+                    _seen_bases.add(_key)
+                    CYCLE_BASES.append((_v, _index_of(_v)))
 # TRANSLATE[t][c] : case c décalée de (tx, ty) = xy_of(t).
 TRANSLATE = tuple(
     tuple(cell_of((x + t % W) % W, (y + t // W) % H) for x, y in (xy_of(c) for c in range(N)))
@@ -473,10 +499,13 @@ class PlannerConfig:
 
     # Cycle Hamiltonien
     use_cycle: bool = True
-    cycle_above: float = 0.55        # occupation à partir de laquelle on bascule
+    # Occupation à partir de laquelle on bascule : 0.46 = juste après 100
+    # (longueur 103 / 225), donc sans effet sur la course à 100. Plus tard,
+    # le corps est trop emmêlé pour rejoindre le cycle de façon fiable.
+    cycle_above: float = 0.46
     cycle_stall_ticks: int = 400     # ou si aucune pomme depuis N ticks
     cycle_shortcut_buffer: int = 3   # marge de cases gardée devant la queue
-    cycle_join_margin: int = 2       # ticks de marge (pommes mangées pendant la jonction)
+    cycle_join_margin: int = 0      # ticks de marge (pommes mangées pendant la jonction)
     cycle_join_retry: int = 1        # ticks entre deux recherches de variante
 
     @classmethod
@@ -519,6 +548,7 @@ class SnakePlanner:
         self.cycle_locked = False
         self.variant = None          # (cycle, index) suivi
         self._next_join_search = 0
+        self._rng = random.Random(0)
         self.last_info: dict = {}
 
     # ---- API moteur ---------------------------------------------------
@@ -564,17 +594,26 @@ class SnakePlanner:
         if not certified:
             info["mode"] = "survival"
             return max(children, key=lambda ac: (reachable_space(ac[1]), count_legal_moves(ac[1])))[0]
-        if len(certified) == 1:
-            info["mode"] = "forced"
-            return certified[0][0]
 
-        # 2. Cycle Hamiltonien à forte densité ou si on stagne.
+        # 2. Cycle Hamiltonien à forte densité ou si on stagne. Testé avant le
+        #    coup forcé : la recherche de jonction doit tourner à chaque tick
+        #    (sinon, corps long => coups forcés en boucle, jamais de jonction).
+        stalled = self._ticks - self._last_eat_tick
         if cfg.use_cycle and (self.cycle_locked or occupancy >= cfg.cycle_above
-                              or self._ticks - self._last_eat_tick >= cfg.cycle_stall_ticks):
+                              or stalled >= cfg.cycle_stall_ticks):
             self.cycle_locked = True
             move = self._cycle_step(state, children, certified)
             if move is not None:
                 return move
+            if stalled >= cfg.cycle_stall_ticks and len(certified) > 1:
+                # Boucle derrière la queue sans jonction possible : un coup
+                # certifié au hasard change la forme du corps (reste sûr).
+                info["mode"] = "unstick"
+                return self._rng.choice(certified)[0]
+
+        if len(certified) == 1:
+            info["mode"] = "forced"
+            return certified[0][0]
 
         # 3. Phase agressive : le plus court chemin, s'il est certifié après le repas.
         if state.score < cfg.astar_first_below:

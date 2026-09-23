@@ -56,6 +56,7 @@ def play_game(args):
     think_max = 0.0
     modes: dict[str, int] = {}
     outcome = "dead"
+    tick_100 = None
     while True:
         t0 = time.perf_counter()
         d = planner.choose_action(snake.body, snake.direction, apple.position,
@@ -74,6 +75,8 @@ def play_game(args):
         if snake.head_pos == list(apple.position):
             snake.grow()
             last_eat = ticks
+            if snake.score == 100 and tick_100 is None:
+                tick_100 = ticks
             if target and snake.score >= target:
                 outcome = "win100"
                 break
@@ -86,8 +89,8 @@ def play_game(args):
             break
     return {
         "seed": seed, "score": snake.score, "ticks": ticks, "outcome": outcome,
-        "reached_100": outcome == "win100",
-        "ticks_to_100": ticks if outcome == "win100" else None,
+        "reached_100": tick_100 is not None,
+        "ticks_to_100": tick_100,
         "max_len": max(max_len, len(snake.body)), "think_ms": 1000 * think / ticks,
         "think_max_ms": 1000 * think_max, "modes": modes,
     }
@@ -117,7 +120,7 @@ def summarize(results, label=""):
           f" (moyenne {statistics.mean(r['max_len'] for r in results):.1f})")
     print(f"  issues     100 {outcomes['win100']} | plateau plein {outcomes['victory']}"
           f" | mort {outcomes['dead']} | stagnation {outcomes['stall']}")
-    fails = [f"{r['score']}@{r['seed']}" for r in results if not r["reached_100"]]
+    fails = [f"{r['score']}@{r['seed']}" for r in results if r["outcome"] in ("dead", "stall")]
     if fails:
         print("  échecs (score@seed) " + ", ".join(fails))
     print(f"  réflexion  {statistics.mean(r['think_ms'] for r in results):.2f} ms/tick"
