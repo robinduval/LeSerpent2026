@@ -1,0 +1,1298 @@
+{
+  "protocol": {
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "grid_size": 15,
+    "initial_length": 3,
+    "growth": "delayed_until_next_move",
+    "max_score": 223,
+    "game_speed": 5,
+    "max_steps": 49952,
+    "invariants_checked_each_step": true,
+    "accelerated": true,
+    "seconds_x1_definition": "steps / GAME_SPEED; equivalent duration, not a measured GUI run",
+    "decision_timing": "select_action including internal cycle validation; excludes snapshot, engine, render, external verification",
+    "randomness": "independent seeded apple RNG, x-major free-cell order; policy sees only current immutable public state",
+    "python": "3.13.15",
+    "source_sha256": "bcc47282f296c2f9bd2de483c9928aeac3980ac608deec9ecb2c4af0227426b5",
+    "policies": [
+      "all64",
+      "alladaptive64",
+      "all128",
+      "alllookahead64"
+    ],
+    "configurations": {
+      "all64": {
+        "search_budget": 64,
+        "beam_width": 4,
+        "apple_neutral": true,
+        "or_opt": true,
+        "or_lengths": null
+      },
+      "alladaptive64": {
+        "search_budget": 64,
+        "beam_width": 4,
+        "apple_neutral": true,
+        "or_opt": true,
+        "or_lengths": null,
+        "adaptive": true
+      },
+      "all128": {
+        "search_budget": 128,
+        "beam_width": 4,
+        "apple_neutral": true,
+        "or_opt": true,
+        "or_lengths": null
+      },
+      "alllookahead64": {
+        "search_budget": 64,
+        "beam_width": 4,
+        "apple_neutral": true,
+        "or_opt": true,
+        "or_lengths": null,
+        "lookahead_depth": 6,
+        "lookahead_roots": true
+      }
+    },
+    "time_limit_ms": null,
+    "work_budget_reproducible": true
+  },
+  "summary": {
+    "all64": {
+      "games": 5,
+      "scores": [
+        223,
+        223,
+        223,
+        223,
+        223
+      ],
+      "completed": 5,
+      "collisions": 0,
+      "interruptions": 0,
+      "mean_steps_to_223": 4845.4,
+      "mean_seconds_x1": 969.0799999999999,
+      "decision": {
+        "count": 24227,
+        "mean_ms": 1.0662360580344243,
+        "p95_ms": 0.551792,
+        "max_ms": 61.451834
+      },
+      "decision_categories": {
+        "search": {
+          "count": 1115,
+          "mean_ms": 17.80010045470852,
+          "p95_ms": 39.023917,
+          "max_ms": 61.451834
+        },
+        "ordinary": {
+          "count": 23112,
+          "mean_ms": 0.2589386020681897,
+          "p95_ms": 0.333166,
+          "max_ms": 3.157834
+        }
+      },
+      "median_steps_to_223": 4879,
+      "p95_steps_to_223": 4933,
+      "max_steps_to_223": 4933,
+      "slowest": [
+        {
+          "seed": 102,
+          "score": 223,
+          "steps": 4933,
+          "seconds_x1": 986.6
+        },
+        {
+          "seed": 101,
+          "score": 223,
+          "steps": 4912,
+          "seconds_x1": 982.4
+        },
+        {
+          "seed": 103,
+          "score": 223,
+          "steps": 4879,
+          "seconds_x1": 975.8
+        },
+        {
+          "seed": 105,
+          "score": 223,
+          "steps": 4818,
+          "seconds_x1": 963.6
+        },
+        {
+          "seed": 104,
+          "score": 223,
+          "steps": 4685,
+          "seconds_x1": 937.0
+        }
+      ],
+      "mean_phase_steps": {
+        "1-50": 805.0,
+        "51-100": 1339.4,
+        "101-150": 1433.2,
+        "151-223": 1267.8
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 46971,
+        "revisits": 28171
+      },
+      "best": {
+        "seed": 104,
+        "score": 223,
+        "steps": 4685,
+        "seconds_x1": 937.0
+      }
+    },
+    "alladaptive64": {
+      "games": 5,
+      "scores": [
+        223,
+        223,
+        223,
+        223,
+        223
+      ],
+      "completed": 5,
+      "collisions": 0,
+      "interruptions": 0,
+      "mean_steps_to_223": 4720.2,
+      "mean_seconds_x1": 944.04,
+      "decision": {
+        "count": 23601,
+        "mean_ms": 2.221409178805983,
+        "p95_ms": 19.33725,
+        "max_ms": 61.57825
+      },
+      "decision_categories": {
+        "search": {
+          "count": 2620,
+          "mean_ms": 17.93718209580153,
+          "p95_ms": 34.181166,
+          "max_ms": 61.57825
+        },
+        "ordinary": {
+          "count": 20981,
+          "mean_ms": 0.2589038147848053,
+          "p95_ms": 0.334166,
+          "max_ms": 2.452125
+        }
+      },
+      "median_steps_to_223": 4677,
+      "p95_steps_to_223": 5032,
+      "max_steps_to_223": 5032,
+      "slowest": [
+        {
+          "seed": 101,
+          "score": 223,
+          "steps": 5032,
+          "seconds_x1": 1006.4
+        },
+        {
+          "seed": 104,
+          "score": 223,
+          "steps": 4975,
+          "seconds_x1": 995.0
+        },
+        {
+          "seed": 103,
+          "score": 223,
+          "steps": 4677,
+          "seconds_x1": 935.4
+        },
+        {
+          "seed": 102,
+          "score": 223,
+          "steps": 4663,
+          "seconds_x1": 932.6
+        },
+        {
+          "seed": 105,
+          "score": 223,
+          "steps": 4254,
+          "seconds_x1": 850.8
+        }
+      ],
+      "mean_phase_steps": {
+        "1-50": 805.0,
+        "51-100": 1235.6,
+        "101-150": 1389.8,
+        "151-223": 1289.8
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 134041,
+        "revisits": 70744
+      },
+      "best": {
+        "seed": 105,
+        "score": 223,
+        "steps": 4254,
+        "seconds_x1": 850.8
+      }
+    },
+    "all128": {
+      "games": 5,
+      "scores": [
+        223,
+        223,
+        223,
+        223,
+        223
+      ],
+      "completed": 5,
+      "collisions": 0,
+      "interruptions": 0,
+      "mean_steps_to_223": 4624.8,
+      "mean_seconds_x1": 924.96,
+      "decision": {
+        "count": 23124,
+        "mean_ms": 1.8944676558553883,
+        "p95_ms": 0.809417,
+        "max_ms": 94.275125
+      },
+      "decision_categories": {
+        "search": {
+          "count": 1115,
+          "mean_ms": 34.18286666547085,
+          "p95_ms": 74.022666,
+          "max_ms": 94.275125
+        },
+        "ordinary": {
+          "count": 22009,
+          "mean_ms": 0.25870206470080426,
+          "p95_ms": 0.334542,
+          "max_ms": 2.208791
+        }
+      },
+      "median_steps_to_223": 4601,
+      "p95_steps_to_223": 4873,
+      "max_steps_to_223": 4873,
+      "slowest": [
+        {
+          "seed": 105,
+          "score": 223,
+          "steps": 4873,
+          "seconds_x1": 974.6
+        },
+        {
+          "seed": 101,
+          "score": 223,
+          "steps": 4611,
+          "seconds_x1": 922.2
+        },
+        {
+          "seed": 103,
+          "score": 223,
+          "steps": 4601,
+          "seconds_x1": 920.2
+        },
+        {
+          "seed": 102,
+          "score": 223,
+          "steps": 4530,
+          "seconds_x1": 906.0
+        },
+        {
+          "seed": 104,
+          "score": 223,
+          "steps": 4509,
+          "seconds_x1": 901.8
+        }
+      ],
+      "mean_phase_steps": {
+        "1-50": 803.2,
+        "51-100": 1172.6,
+        "101-150": 1420.2,
+        "151-223": 1228.8
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 92360,
+        "revisits": 59415
+      },
+      "best": {
+        "seed": 104,
+        "score": 223,
+        "steps": 4509,
+        "seconds_x1": 901.8
+      }
+    },
+    "alllookahead64": {
+      "games": 5,
+      "scores": [
+        223,
+        223,
+        223,
+        223,
+        223
+      ],
+      "completed": 5,
+      "collisions": 0,
+      "interruptions": 0,
+      "mean_steps_to_223": 4799.6,
+      "mean_seconds_x1": 959.9200000000001,
+      "decision": {
+        "count": 23998,
+        "mean_ms": 3.2263245816318027,
+        "p95_ms": 3.747042,
+        "max_ms": 66.613916
+      },
+      "decision_categories": {
+        "search": {
+          "count": 23998,
+          "mean_ms": 3.2263245816318027,
+          "p95_ms": 3.747042,
+          "max_ms": 66.613916
+        },
+        "ordinary": {
+          "count": 0,
+          "mean_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        }
+      },
+      "median_steps_to_223": 4896,
+      "p95_steps_to_223": 5200,
+      "max_steps_to_223": 5200,
+      "slowest": [
+        {
+          "seed": 101,
+          "score": 223,
+          "steps": 5200,
+          "seconds_x1": 1040.0
+        },
+        {
+          "seed": 102,
+          "score": 223,
+          "steps": 5086,
+          "seconds_x1": 1017.2
+        },
+        {
+          "seed": 104,
+          "score": 223,
+          "steps": 4896,
+          "seconds_x1": 979.2
+        },
+        {
+          "seed": 105,
+          "score": 223,
+          "steps": 4583,
+          "seconds_x1": 916.6
+        },
+        {
+          "seed": 103,
+          "score": 223,
+          "steps": 4233,
+          "seconds_x1": 846.6
+        }
+      ],
+      "mean_phase_steps": {
+        "1-50": 867.0,
+        "51-100": 1303.2,
+        "101-150": 1451.2,
+        "151-223": 1178.2
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 47118,
+        "revisits": 27411
+      },
+      "best": {
+        "seed": 103,
+        "score": 223,
+        "steps": 4233,
+        "seconds_x1": 846.6
+      }
+    }
+  },
+  "movement_reduction_percent": 0.9452264002971722,
+  "runs": [
+    {
+      "policy": "all64",
+      "seed": 101,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4912,
+      "steps_to_223": 4912,
+      "seconds_x1": 982.4,
+      "wall_seconds": 5.58824258299137,
+      "max_steps_between_apples": 131,
+      "decision": {
+        "count": 4912,
+        "mean_ms": 1.0658247442996742,
+        "p95_ms": 0.536125,
+        "max_ms": 45.08
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 17.91215192825112,
+          "p95_ms": 37.48525,
+          "max_ms": 45.08
+        },
+        "ordinary": {
+          "count": 4689,
+          "mean_ms": 0.26464518319471103,
+          "p95_ms": 0.335333,
+          "max_ms": 1.884125
+        }
+      },
+      "phase_steps": {
+        "1-50": 841,
+        "51-100": 1676,
+        "101-150": 1290,
+        "151-223": 1105
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9701,
+        "revisits": 4937
+      }
+    },
+    {
+      "policy": "alladaptive64",
+      "seed": 101,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 5032,
+      "steps_to_223": 5032,
+      "seconds_x1": 1006.4,
+      "wall_seconds": 10.771682499995222,
+      "max_steps_between_apples": 84,
+      "decision": {
+        "count": 5032,
+        "mean_ms": 2.0672624823131955,
+        "p95_ms": 17.865666,
+        "max_ms": 44.708375
+      },
+      "decision_categories": {
+        "search": {
+          "count": 552,
+          "mean_ms": 16.746758398550725,
+          "p95_ms": 33.282083,
+          "max_ms": 44.708375
+        },
+        "ordinary": {
+          "count": 4480,
+          "mean_ms": 0.2585388783482143,
+          "p95_ms": 0.3345,
+          "max_ms": 2.007541
+        }
+      },
+      "phase_steps": {
+        "1-50": 841,
+        "51-100": 1174,
+        "101-150": 1616,
+        "151-223": 1401
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 25692,
+        "revisits": 19675
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 101,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4611,
+      "steps_to_223": 4611,
+      "seconds_x1": 922.2,
+      "wall_seconds": 9.102126750003663,
+      "max_steps_between_apples": 106,
+      "decision": {
+        "count": 4611,
+        "mean_ms": 1.9012199149859033,
+        "p95_ms": 0.616208,
+        "max_ms": 82.008958
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 34.27813318834081,
+          "p95_ms": 72.620958,
+          "max_ms": 82.008958
+        },
+        "ordinary": {
+          "count": 4388,
+          "mean_ms": 0.2558116059708295,
+          "p95_ms": 0.334583,
+          "max_ms": 1.918
+        }
+      },
+      "phase_steps": {
+        "1-50": 747,
+        "51-100": 1358,
+        "101-150": 1190,
+        "151-223": 1316
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 19099,
+        "revisits": 14245
+      }
+    },
+    {
+      "policy": "alllookahead64",
+      "seed": 101,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 5200,
+      "steps_to_223": 5200,
+      "seconds_x1": 1040.0,
+      "wall_seconds": 16.950347124991822,
+      "max_steps_between_apples": 99,
+      "decision": {
+        "count": 5200,
+        "mean_ms": 3.1859241342307696,
+        "p95_ms": 3.683125,
+        "max_ms": 57.927292
+      },
+      "decision_categories": {
+        "search": {
+          "count": 5200,
+          "mean_ms": 3.1859241342307696,
+          "p95_ms": 3.683125,
+          "max_ms": 57.927292
+        },
+        "ordinary": {
+          "count": 0,
+          "mean_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        }
+      },
+      "phase_steps": {
+        "1-50": 843,
+        "51-100": 1713,
+        "101-150": 1463,
+        "151-223": 1181
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9161,
+        "revisits": 6126
+      }
+    },
+    {
+      "policy": "all64",
+      "seed": 102,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4933,
+      "steps_to_223": 4933,
+      "seconds_x1": 986.6,
+      "wall_seconds": 5.559951708011795,
+      "max_steps_between_apples": 100,
+      "decision": {
+        "count": 4933,
+        "mean_ms": 1.0538607745793636,
+        "p95_ms": 0.520167,
+        "max_ms": 50.186917
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 17.84215861883408,
+          "p95_ms": 39.426209,
+          "max_ms": 50.186917
+        },
+        "ordinary": {
+          "count": 4710,
+          "mean_ms": 0.2590008129511677,
+          "p95_ms": 0.33,
+          "max_ms": 2.978709
+        }
+      },
+      "phase_steps": {
+        "1-50": 825,
+        "51-100": 1320,
+        "101-150": 1489,
+        "151-223": 1299
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9359,
+        "revisits": 5709
+      }
+    },
+    {
+      "policy": "alladaptive64",
+      "seed": 102,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4663,
+      "steps_to_223": 4663,
+      "seconds_x1": 932.6,
+      "wall_seconds": 10.80155950000335,
+      "max_steps_between_apples": 87,
+      "decision": {
+        "count": 4663,
+        "mean_ms": 2.2433277001930088,
+        "p95_ms": 19.490541,
+        "max_ms": 50.272417
+      },
+      "decision_categories": {
+        "search": {
+          "count": 508,
+          "mean_ms": 18.474015757874014,
+          "p95_ms": 34.669,
+          "max_ms": 50.272417
+        },
+        "ordinary": {
+          "count": 4155,
+          "mean_ms": 0.25892588712394704,
+          "p95_ms": 0.334375,
+          "max_ms": 1.500875
+        }
+      },
+      "phase_steps": {
+        "1-50": 825,
+        "51-100": 1337,
+        "101-150": 1188,
+        "151-223": 1313
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 27154,
+        "revisits": 10737
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 102,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4530,
+      "steps_to_223": 4530,
+      "seconds_x1": 906.0,
+      "wall_seconds": 8.893626000004588,
+      "max_steps_between_apples": 101,
+      "decision": {
+        "count": 4530,
+        "mean_ms": 1.8900197671081678,
+        "p95_ms": 0.786125,
+        "max_ms": 85.361791
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 33.41127878923767,
+          "p95_ms": 72.784084,
+          "max_ms": 85.361791
+        },
+        "ordinary": {
+          "count": 4307,
+          "mean_ms": 0.257969439284885,
+          "p95_ms": 0.33025,
+          "max_ms": 1.699791
+        }
+      },
+      "phase_steps": {
+        "1-50": 697,
+        "51-100": 1295,
+        "101-150": 1380,
+        "151-223": 1158
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 17703,
+        "revisits": 12699
+      }
+    },
+    {
+      "policy": "alllookahead64",
+      "seed": 102,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 5086,
+      "steps_to_223": 5086,
+      "seconds_x1": 1017.2,
+      "wall_seconds": 16.31979437499831,
+      "max_steps_between_apples": 99,
+      "decision": {
+        "count": 5086,
+        "mean_ms": 3.133956442194259,
+        "p95_ms": 3.66425,
+        "max_ms": 55.679125
+      },
+      "decision_categories": {
+        "search": {
+          "count": 5086,
+          "mean_ms": 3.133956442194259,
+          "p95_ms": 3.66425,
+          "max_ms": 55.679125
+        },
+        "ordinary": {
+          "count": 0,
+          "mean_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        }
+      },
+      "phase_steps": {
+        "1-50": 927,
+        "51-100": 1120,
+        "101-150": 1631,
+        "151-223": 1408
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 8928,
+        "revisits": 5095
+      }
+    },
+    {
+      "policy": "all64",
+      "seed": 103,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4879,
+      "steps_to_223": 4879,
+      "seconds_x1": 975.8,
+      "wall_seconds": 5.572247207994224,
+      "max_steps_between_apples": 110,
+      "decision": {
+        "count": 4879,
+        "mean_ms": 1.0693011779053085,
+        "p95_ms": 0.547333,
+        "max_ms": 61.451834
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 17.96309399103139,
+          "p95_ms": 38.705292,
+          "max_ms": 61.451834
+        },
+        "ordinary": {
+          "count": 4656,
+          "mean_ms": 0.2601697781357388,
+          "p95_ms": 0.331708,
+          "max_ms": 2.351917
+        }
+      },
+      "phase_steps": {
+        "1-50": 791,
+        "51-100": 1307,
+        "101-150": 1578,
+        "151-223": 1203
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9589,
+        "revisits": 5027
+      }
+    },
+    {
+      "policy": "alladaptive64",
+      "seed": 103,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4677,
+      "steps_to_223": 4677,
+      "seconds_x1": 935.4,
+      "wall_seconds": 11.114903083987883,
+      "max_steps_between_apples": 79,
+      "decision": {
+        "count": 4677,
+        "mean_ms": 2.3031904571306394,
+        "p95_ms": 19.90775,
+        "max_ms": 61.57825
+      },
+      "decision_categories": {
+        "search": {
+          "count": 534,
+          "mean_ms": 18.18036920599251,
+          "p95_ms": 33.490583,
+          "max_ms": 61.57825
+        },
+        "ordinary": {
+          "count": 4143,
+          "mean_ms": 0.25674743229543806,
+          "p95_ms": 0.331958,
+          "max_ms": 1.037458
+        }
+      },
+      "phase_steps": {
+        "1-50": 791,
+        "51-100": 1242,
+        "101-150": 1411,
+        "151-223": 1233
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 27858,
+        "revisits": 14586
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 103,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4601,
+      "steps_to_223": 4601,
+      "seconds_x1": 920.2,
+      "wall_seconds": 9.064957708993461,
+      "max_steps_between_apples": 124,
+      "decision": {
+        "count": 4601,
+        "mean_ms": 1.8976420712888504,
+        "p95_ms": 0.949625,
+        "max_ms": 94.275125
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 34.026223695067266,
+          "p95_ms": 73.7545,
+          "max_ms": 94.275125
+        },
+        "ordinary": {
+          "count": 4378,
+          "mean_ms": 0.2611245513933303,
+          "p95_ms": 0.33425,
+          "max_ms": 2.090875
+        }
+      },
+      "phase_steps": {
+        "1-50": 1002,
+        "51-100": 1095,
+        "101-150": 1357,
+        "151-223": 1147
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 18627,
+        "revisits": 12428
+      }
+    },
+    {
+      "policy": "alllookahead64",
+      "seed": 103,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4233,
+      "steps_to_223": 4233,
+      "seconds_x1": 846.6,
+      "wall_seconds": 14.511392250002245,
+      "max_steps_between_apples": 88,
+      "decision": {
+        "count": 4233,
+        "mean_ms": 3.353592268367588,
+        "p95_ms": 3.994208,
+        "max_ms": 66.613916
+      },
+      "decision_categories": {
+        "search": {
+          "count": 4233,
+          "mean_ms": 3.353592268367588,
+          "p95_ms": 3.994208,
+          "max_ms": 66.613916
+        },
+        "ordinary": {
+          "count": 0,
+          "mean_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        }
+      },
+      "phase_steps": {
+        "1-50": 861,
+        "51-100": 1096,
+        "101-150": 1306,
+        "151-223": 970
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9560,
+        "revisits": 5544
+      }
+    },
+    {
+      "policy": "all64",
+      "seed": 104,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4685,
+      "steps_to_223": 4685,
+      "seconds_x1": 937.0,
+      "wall_seconds": 5.420198749998235,
+      "max_steps_between_apples": 96,
+      "decision": {
+        "count": 4685,
+        "mean_ms": 1.0831433033084312,
+        "p95_ms": 0.68725,
+        "max_ms": 53.058875
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 17.588976085201793,
+          "p95_ms": 39.402,
+          "max_ms": 53.058875
+        },
+        "ordinary": {
+          "count": 4462,
+          "mean_ms": 0.2582215842671448,
+          "p95_ms": 0.338459,
+          "max_ms": 3.157834
+        }
+      },
+      "phase_steps": {
+        "1-50": 746,
+        "51-100": 1301,
+        "101-150": 1344,
+        "151-223": 1294
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9051,
+        "revisits": 7181
+      }
+    },
+    {
+      "policy": "alladaptive64",
+      "seed": 104,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4975,
+      "steps_to_223": 4975,
+      "seconds_x1": 995.0,
+      "wall_seconds": 11.935349375009537,
+      "max_steps_between_apples": 101,
+      "decision": {
+        "count": 4975,
+        "mean_ms": 2.3251458773869347,
+        "p95_ms": 19.400708,
+        "max_ms": 52.360417
+      },
+      "decision_categories": {
+        "search": {
+          "count": 581,
+          "mean_ms": 17.939092445783132,
+          "p95_ms": 33.846291,
+          "max_ms": 52.360417
+        },
+        "ordinary": {
+          "count": 4394,
+          "mean_ms": 0.26057988825671374,
+          "p95_ms": 0.334458,
+          "max_ms": 2.452125
+        }
+      },
+      "phase_steps": {
+        "1-50": 746,
+        "51-100": 1350,
+        "101-150": 1630,
+        "151-223": 1249
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 30494,
+        "revisits": 15124
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 104,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4509,
+      "steps_to_223": 4509,
+      "seconds_x1": 901.8,
+      "wall_seconds": 9.30247758400219,
+      "max_steps_between_apples": 90,
+      "decision": {
+        "count": 4509,
+        "mean_ms": 1.988432891550233,
+        "p95_ms": 1.109333,
+        "max_ms": 80.901833
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 35.1780945470852,
+          "p95_ms": 74.8405,
+          "max_ms": 80.901833
+        },
+        "ordinary": {
+          "count": 4286,
+          "mean_ms": 0.2615792869808679,
+          "p95_ms": 0.338792,
+          "max_ms": 2.208791
+        }
+      },
+      "phase_steps": {
+        "1-50": 788,
+        "51-100": 1028,
+        "101-150": 1448,
+        "151-223": 1245
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 19111,
+        "revisits": 11657
+      }
+    },
+    {
+      "policy": "alllookahead64",
+      "seed": 104,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4896,
+      "steps_to_223": 4896,
+      "seconds_x1": 979.2,
+      "wall_seconds": 16.109852459005197,
+      "max_steps_between_apples": 95,
+      "decision": {
+        "count": 4896,
+        "mean_ms": 3.2160041458333333,
+        "p95_ms": 3.719834,
+        "max_ms": 58.084791
+      },
+      "decision_categories": {
+        "search": {
+          "count": 4896,
+          "mean_ms": 3.2160041458333333,
+          "p95_ms": 3.719834,
+          "max_ms": 58.084791
+        },
+        "ordinary": {
+          "count": 0,
+          "mean_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        }
+      },
+      "phase_steps": {
+        "1-50": 869,
+        "51-100": 1284,
+        "101-150": 1489,
+        "151-223": 1254
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9803,
+        "revisits": 5440
+      }
+    },
+    {
+      "policy": "all64",
+      "seed": 105,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4818,
+      "steps_to_223": 4818,
+      "seconds_x1": 963.6,
+      "wall_seconds": 5.459161792008672,
+      "max_steps_between_apples": 95,
+      "decision": {
+        "count": 4818,
+        "mean_ms": 1.059781612702366,
+        "p95_ms": 0.52125,
+        "max_ms": 50.506041
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 17.694121650224215,
+          "p95_ms": 39.463708,
+          "max_ms": 50.506041
+        },
+        "ordinary": {
+          "count": 4595,
+          "mean_ms": 0.25250025723612624,
+          "p95_ms": 0.332875,
+          "max_ms": 1.393667
+        }
+      },
+      "phase_steps": {
+        "1-50": 822,
+        "51-100": 1093,
+        "101-150": 1465,
+        "151-223": 1438
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9271,
+        "revisits": 5317
+      }
+    },
+    {
+      "policy": "alladaptive64",
+      "seed": 105,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4254,
+      "steps_to_223": 4254,
+      "seconds_x1": 850.8,
+      "wall_seconds": 9.537939709000057,
+      "max_steps_between_apples": 91,
+      "decision": {
+        "count": 4254,
+        "mean_ms": 2.168489338034791,
+        "p95_ms": 19.69325,
+        "max_ms": 50.464375
+      },
+      "decision_categories": {
+        "search": {
+          "count": 445,
+          "mean_ms": 18.5066889505618,
+          "p95_ms": 36.260375,
+          "max_ms": 50.464375
+        },
+        "ordinary": {
+          "count": 3809,
+          "mean_ms": 0.2597209401417695,
+          "p95_ms": 0.336375,
+          "max_ms": 1.643666
+        }
+      },
+      "phase_steps": {
+        "1-50": 822,
+        "51-100": 1075,
+        "101-150": 1104,
+        "151-223": 1253
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 22843,
+        "revisits": 10622
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 105,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4873,
+      "steps_to_223": 4873,
+      "seconds_x1": 974.6,
+      "wall_seconds": 9.141179917001864,
+      "max_steps_between_apples": 81,
+      "decision": {
+        "count": 4873,
+        "mean_ms": 1.802269735891648,
+        "p95_ms": 0.64925,
+        "max_ms": 87.4435
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 34.020603107623316,
+          "p95_ms": 75.972584,
+          "max_ms": 87.4435
+        },
+        "ordinary": {
+          "count": 4650,
+          "mean_ms": 0.25717546881720427,
+          "p95_ms": 0.333416,
+          "max_ms": 1.578375
+        }
+      },
+      "phase_steps": {
+        "1-50": 782,
+        "51-100": 1087,
+        "101-150": 1726,
+        "151-223": 1278
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 17820,
+        "revisits": 8386
+      }
+    },
+    {
+      "policy": "alllookahead64",
+      "seed": 105,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4583,
+      "steps_to_223": 4583,
+      "seconds_x1": 916.6,
+      "wall_seconds": 15.316024416999426,
+      "max_steps_between_apples": 106,
+      "decision": {
+        "count": 4583,
+        "mean_ms": 3.2681468420248745,
+        "p95_ms": 3.763292,
+        "max_ms": 57.284084
+      },
+      "decision_categories": {
+        "search": {
+          "count": 4583,
+          "mean_ms": 3.2681468420248745,
+          "p95_ms": 3.763292,
+          "max_ms": 57.284084
+        },
+        "ordinary": {
+          "count": 0,
+          "mean_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        }
+      },
+      "phase_steps": {
+        "1-50": 835,
+        "51-100": 1303,
+        "101-150": 1367,
+        "151-223": 1078
+      },
+      "search_totals": {
+        "deadline_hits": 0,
+        "candidates": 9666,
+        "revisits": 5206
+      }
+    }
+  ]
+}
