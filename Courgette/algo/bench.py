@@ -15,6 +15,8 @@ import core
 def make(name):
     import heuristic
     import hamilton
+    import celltree
+    import dyncycle_plus
     table = {
         "heur-literal": lambda: heuristic.HeuristicEngine("literal"),
         "heur-corrected": lambda: heuristic.HeuristicEngine("corrected"),
@@ -31,11 +33,20 @@ def make(name):
         "search-d3": lambda: hamilton.DynamicCycleSearch(depth=3),
         "search-c200": lambda: hamilton.DynamicCycleSearch(cap=200),
         "search-c2000": lambda: hamilton.DynamicCycleSearch(cap=2000),
+        "celltree": lambda: celltree.CellTree(),
+        "search-plus": lambda: dyncycle_plus.DynamicCycleSearchPlus(),
+        "search-plus-noreplan": lambda: dyncycle_plus.DynamicCycleSearchPlus(replan_every=0),
         "hybrid": lambda: hamilton.Hybrid(),
     }
+    if name.startswith("search-plus-d"):     # search-plus-d5
+        return dyncycle_plus.DynamicCycleSearchPlus(depth=int(name[len("search-plus-d"):]))
+    if name.startswith("search-plus-w"):     # search-plus-w1.5 ou search-plus-w2-order
+        w, _, dd = name[len("search-plus-w"):].partition("-")
+        return dyncycle_plus.DynamicCycleSearchPlus(weight=float(w), dedup=dd or "cells")
     if name.startswith("search-d"):          # search-d3-c600
         d, c = name[len("search-d"):].split("-c")
         return hamilton.DynamicCycleSearch(depth=int(d), cap=int(c))
+    import dyncycle_plus
     return table[name]()
 
 
