@@ -5,3 +5,4 @@
 20:19 : L'approche de l'ami magique est bien plus performante (10/10 parties gagnees contre 6/10, en 22 min en moyenne, contre 37)
 L'approche en une phrase : le serpent suit un cycle qui passe par toutes les cases, prend des raccourcis vers la pomme (trouvés par BFS) sans jamais dépasser sa queue sur le cycle, jusqu'à 50 % de remplissage, puis suit le cycle sans raccourci jusqu'à 100 %.
 Resultats : 222 (100%) en 19 min 28 s.
+21:08 : On a une vraie avancée sur toute la partie Hamiltonien a la fin, on ne va pas rester sur un chemin fixe mais on va essayer de calculer le chemin hamiltonien le plus optimisé pour arriver a la pomme le plus vite possible, en esperant qu'ensuite on puisse arriver a la prochaine pomme plus rapidement. C'est un cycle hamiltonien dynamique. En plus de cela, on a ameliorer l'algo avec du 2-opt, pour optimiser encore le circuit.

@@ -132,10 +132,11 @@ class Apple:
             # Ajout d'un petit reflet pour un aspect "pomme"
             pygame.draw.circle(surface, BLANC, (rect.x + CELL_SIZE * 0.7, rect.y + CELL_SIZE * 0.3), CELL_SIZE // 8)
 
-# --- IA : CYCLE HAMILTONIEN + RACCOURCIS + BFS DE SÉCURITÉ ---
+# --- IA : CYCLE HAMILTONIEN DYNAMIQUE + RACCOURCIS ---
 
 N_CELLS = GRID_SIZE * GRID_SIZE
 DIRECTIONS = (UP, DOWN, LEFT, RIGHT)
+CELLS = [(x, y) for y in range(GRID_SIZE) for x in range(GRID_SIZE)]
 
 
 def wrap(pos, direction):
@@ -143,24 +144,24 @@ def wrap(pos, direction):
     return ((pos[0] + direction[0]) % GRID_SIZE, (pos[1] + direction[1]) % GRID_SIZE)
 
 
-def cycle_index(pos):
-    """Rang de la case sur le cycle hamiltonien.
+NEIGHBORS = {c: [wrap(c, d) for d in DIRECTIONS] for c in CELLS}
+NEIGHBOR_SET = {c: set(n) for c, n in NEIGHBORS.items()}
 
-    Le cycle fait 14 pas à droite puis 1 en bas, chaque ligne étant décalée d'une case.
-    Il se referme grâce au rebouclage des bords (impossible en 15x15 avec de vrais murs).
-    """
-    x, y = pos
-    return y * GRID_SIZE + (x + y) % GRID_SIZE
+
+def direction_to(a, b):
+    """Direction qui mène de la case a à la case voisine b."""
+    for d in DIRECTIONS:
+        if wrap(a, d) == b:
+            return d
+    return None
 
 
 def cycle_direction(pos):
-    """Direction pour avancer d'une case sur le cycle."""
+    """Cycle de départ : 14 pas à droite puis 1 en bas, chaque ligne décalée d'une case.
+
+    Il se referme grâce au rebouclage des bords (impossible en 15x15 avec de vrais murs).
+    """
     return DOWN if (pos[0] + pos[1]) % GRID_SIZE == GRID_SIZE - 1 else RIGHT
-
-
-def cycle_dist(a, b):
-    """Nombre de pas pour aller du rang a au rang b en suivant le cycle."""
-    return (b - a) % N_CELLS
 
 
 def blocked_cells(snake):
@@ -175,46 +176,85 @@ def reachable_area(start, blocked):
     queue = deque([start])
     while queue:
         cur = queue.popleft()
-        for d in DIRECTIONS:
-            nxt = wrap(cur, d)
+        for nxt in NEIGHBORS[cur]:
             if nxt not in blocked and nxt not in seen:
                 seen.add(nxt)
                 queue.append(nxt)
     return len(seen)
 
 
-class HamiltonianShortcutAI:
-    """Suit le cycle hamiltonien en prenant des raccourcis vers la pomme.
+class _Abort(Exception):
+    """Budget du DFS épuisé."""
 
-    Invariant : en avançant sur le cycle depuis la tête, on rencontre la queue avant
-    tout autre morceau du corps. Les cases entre la tête et la queue sont donc libres,
-    et sauter en avant sans dépasser la queue ne peut pas tuer le serpent.
+
+class HamiltonianShortcutAI:
+    """Suit un cycle hamiltonien qu'il réorganise à chaque pomme, avec des raccourcis en début de partie.
+
+    Invariant : en avançant sur le cycle depuis la tête, les cases jusqu'à la queue sont libres.
+    Les raccourcis ne dépassent jamais la queue, et le cycle n'est modifié que dans cette zone
+    libre : le corps reste rangé dans l'ordre du cycle, le serpent ne peut pas se mordre.
     """
 
-    def __init__(self, shortcut_limit=0.5, margin=2):
-        self.shortcut_limit = shortcut_limit  # remplissage au-delà duquel on suit le cycle pur
-        self.margin = margin                  # cases libres gardées devant la queue
+    def __init__(self, shortcut_limit=0.2, margin=2, dfs_budget=500):
+        self.shortcut_limit = shortcut_limit  # remplissage au-delà duquel on ne prend plus de raccourcis
+        self.margin = margin                  # cases libres gardées devant la queue lors d'un raccourci
+        self.dfs_budget = dfs_budget          # nœuds explorés au maximum par reconstruction
         self.fallbacks = 0                    # nombre de fois où la sécurité a dû intervenir
+        self.order = []                       # le cycle, sous forme de liste de cases
+        cell = (0, 0)
+        for _ in range(N_CELLS):
+            self.order.append(cell)
+            cell = wrap(cell, cycle_direction(cell))
+        self._reindex()
+        self.last_apple = None
+        self.rebuild_pending = False
+
+    # --- Cycle ---
+
+    def _reindex(self):
+        self.pos = {c: i for i, c in enumerate(self.order)}
+
+    def _rotate(self, head):
+        """Place la tête en tête de liste : le rang d'une case devient son indice."""
+        p = self.pos[head]
+        if p:
+            self.order = self.order[p:] + self.order[:p]
+            self._reindex()
+
+    def rank(self, cell, head):
+        """Nombre de pas pour aller de la tête à cell en suivant le cycle."""
+        return (self.pos[cell] - self.pos[head]) % N_CELLS
+
+    # --- Décision ---
 
     def choose(self, snake, apple):
         head = tuple(snake.head_pos)
-        direction = cycle_direction(head)
-        if apple is not None and len(snake.body) / N_CELLS < self.shortcut_limit:
-            direction = self.shortcut(snake, head, tuple(apple)) or direction
-        return self.secure(snake, head, direction)
+        tail = tuple(snake.body[-1])
+        apple = tuple(apple) if apple is not None else None
 
-    def shortcut(self, snake, head, apple):
+        # 1. Réorganiser le cycle pour que la pomme arrive le plus tôt possible.
+        if apple is not None and (apple != self.last_apple or self.rebuild_pending):
+            self.last_apple = apple
+            self.rebuild_pending = not self._rebuild(head, tail, apple)
+            self._flip(head, tail, apple)
+
+        # 2. Suivre le cycle, ou prendre un raccourci en début de partie.
+        direction = direction_to(head, self.order[(self.pos[head] + 1) % N_CELLS])
+        if apple is not None and len(snake.body) / N_CELLS < self.shortcut_limit:
+            direction = self._shortcut(snake, head, apple) or direction
+
+        # 3. Dernière vérification avant de bouger.
+        return self._secure(snake, head, direction)
+
+    def _shortcut(self, snake, head, apple):
         """BFS vers la pomme sur les cases de rang croissant, sans dépasser la queue."""
-        h = cycle_index(head)
         tail = tuple(snake.body[-1] if snake.grow_pending else snake.body[-2])
-        to_tail = cycle_dist(h, cycle_index(tail))
-        to_apple = cycle_dist(h, cycle_index(apple))
-        limit = min(to_apple, to_tail - self.margin - 1)
+        limit = min(self.rank(apple, head), self.rank(tail, head) - self.margin - 1)
         if limit <= 1:
             return None
 
         blocked = blocked_cells(snake)
-        rank = lambda cell: cycle_dist(h, cycle_index(cell))
+        rank = lambda cell: self.rank(cell, head)
         first_step = {}
         queue = deque()
         # Les plus grands sauts d'abord : à longueur égale, le BFS garde le plus avancé.
@@ -232,15 +272,14 @@ class HamiltonianShortcutAI:
             if cur == apple:
                 return first_step[cur]
             r_cur = rank(cur)
-            for d in DIRECTIONS:
-                nxt = wrap(cur, d)
+            for nxt in NEIGHBORS[cur]:
                 if r_cur < rank(nxt) <= limit and nxt not in blocked and nxt not in first_step:
                     first_step[nxt] = first_step[cur]
                     queue.append(nxt)
         # Pomme hors de portée : on avance au plus loin autorisé sur le cycle.
         return first_step[best_jump]
 
-    def secure(self, snake, head, direction):
+    def _secure(self, snake, head, direction):
         """Vérifie que le coup ne tue pas, sinon prend le coup qui garde le plus d'espace."""
         blocked = blocked_cells(snake)
         if wrap(head, direction) not in blocked:
@@ -250,6 +289,109 @@ class HamiltonianShortcutAI:
         if not safe:
             return direction
         return max(safe, key=lambda d: reachable_area(wrap(head, d), blocked))
+
+    # --- Réorganisation du cycle (uniquement entre la tête et la queue) ---
+
+    def _rebuild(self, head, tail, apple):
+        """Retrace toute la zone libre par DFS : tête → pomme au plus vite → toutes les cases → queue.
+
+        Renvoie False si le DFS n'a pas trouvé mieux (on retentera au prochain coup).
+        """
+        self._rotate(head)
+        rt, ra = self.pos[tail], self.pos[apple]
+        if ra >= rt:
+            return True  # pomme dans un trou derrière la tête : rien à reconstruire
+        free = set(self.order[1:rt])
+
+        # Distance de chaque case libre à la pomme.
+        dist = {apple: 0}
+        queue = deque([apple])
+        while queue:
+            cur = queue.popleft()
+            for nxt in NEIGHBORS[cur]:
+                if nxt in free and nxt not in dist:
+                    dist[nxt] = dist[cur] + 1
+                    queue.append(nxt)
+        best_possible = 1 + min((dist[n] for n in NEIGHBORS[head] if n in dist), default=ra)
+        if ra <= best_possible:
+            return True  # la pomme est déjà au plus tôt
+
+        for greedy in (True, False):
+            path = self._dfs(head, tail, apple, free, dist, greedy)
+            if path is not None and path.index(apple) + 1 < ra:
+                self.order = [head] + path + self.order[rt:]
+                self._reindex()
+                return True
+        return False
+
+    def _dfs(self, head, tail, apple, free, dist, greedy):
+        """Chemin hamiltonien sur les cases libres, de la tête jusqu'à une voisine de la queue."""
+        unvisited = set(free)
+        path = []
+        state = {"nodes": 0, "apple": False}
+        far = len(free) + 1
+
+        def degree(w, cur):
+            # Voisins par lesquels w peut encore être relié : cases libres, tête courante, queue.
+            return sum(1 for n in NEIGHBORS[w] if n in unvisited or n == cur or n == tail)
+
+        def still_possible(prev, cur):
+            # En quittant prev, ses voisins libres perdent un lien : chacun doit en garder 2.
+            return all(degree(w, cur) >= 2 for w in NEIGHBORS[prev] if w in unvisited)
+
+        def explore(cur):
+            if not unvisited:
+                return tail in NEIGHBOR_SET[cur]
+            state["nodes"] += 1
+            if state["nodes"] > self.dfs_budget:
+                raise _Abort
+            candidates = [n for n in NEIGHBORS[cur] if n in unvisited]
+            if not state["apple"] and greedy:
+                candidates.sort(key=lambda n: (dist.get(n, far), degree(n, n)))  # foncer vers la pomme
+            elif not state["apple"]:
+                candidates.sort(key=lambda n: (degree(n, n), dist.get(n, far)))
+            else:
+                candidates.sort(key=lambda n: degree(n, n))  # Warnsdorff : case la plus contrainte d'abord
+            for n in candidates:
+                unvisited.discard(n)
+                path.append(n)
+                had_apple = state["apple"]
+                state["apple"] = had_apple or n == apple
+                if still_possible(cur, n) and explore(n):
+                    return True
+                state["apple"] = had_apple
+                path.pop()
+                unvisited.add(n)
+            return False
+
+        try:
+            return list(path) if explore(head) else None
+        except _Abort:
+            return None
+
+    def _flip(self, head, tail, apple):
+        """Retouches 2-opt : si a→b et c→d sur le cycle avec a voisin de c et b voisin de d,
+        on inverse le segment b..c. Répété tant que la pomme remonte dans le cycle."""
+        self._rotate(head)
+        order = self.order
+        while True:
+            rt, ra = self.pos[tail], self.pos[apple]
+            if ra >= rt:
+                return
+            best = None
+            for i in range(ra):
+                a, b = order[i], order[i + 1]
+                for c in NEIGHBORS[a]:
+                    j = self.pos[c]
+                    if ra <= j < rt and order[j + 1] in NEIGHBOR_SET[b]:
+                        new_ra = i + 1 + (j - ra)
+                        if new_ra < ra and (best is None or new_ra < best[0]):
+                            best = (new_ra, i, j)
+            if best is None:
+                return
+            _, i, j = best
+            order[i + 1:j + 1] = order[i + 1:j + 1][::-1]
+            self._reindex()
 
 # --- FONCTIONS D'AFFICHAGE ---
 
