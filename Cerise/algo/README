@@ -1,0 +1,11 @@
+20:01 : lecture du README et choix de l'algorithme.
+20:11 : on interroge ChatGPT sur différents algorithmes.
+20:14 : c'est long…
+20:23 : on étudie l'algorithme Safe A* et on va essayer de l'implémenter avec l'aide de ChatGPT pour notre premier test.
+20:33 : on teste !
+20:40 : premières estimations : 202 pommes mangées en 26 min 40 s.
+21:07 : on fait toujours des tests !
+21:10 : optimisation de l'algorithme. Pour l'instant, aucune victoire, ou du moins elle est trop longue à atteindre.
+21:19 : ouiiii victoire ! On a testé un cycle hamiltonien avec raccourcis. Score : 223… mais en fait non, le score est nul, car le temps est beaucoup trop long. On va essayer autre chose.
+21:33 : on tente une optimisation pour finir plus vite si possible.
+21:44 : dernière tentative d'optimisation : augmenter les chances que la pomme apparaisse sur un chemin direct depuis la tête du serpent, pour éviter les détours.
