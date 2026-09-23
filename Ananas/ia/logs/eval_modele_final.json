@@ -1,0 +1,325 @@
+{
+  "stats": {
+    "agent": "snake-ia (Rainbow DQN)",
+    "checkpoint": "/tmp/claude-1000/-home-amoulou-Claude-Projects-STP-LeSerpent2026-Ananas/1f072f73-f9c0-4f72-a1b9-99a58de6a710/scratchpad/c_mean.pt",
+    "etat": "v1",
+    "grille": 15,
+    "parties": 30,
+    "seeds": "42..71",
+    "score_moyen": 33.7,
+    "score_median": 33.0,
+    "score_ecart_type": 10.379948619012202,
+    "score_min": 18,
+    "score_max": 64,
+    "pas_par_pomme_median": 8.789565217391305,
+    "decision_moy_ms": 0.5366652873149762,
+    "decision_max_ms": 2.7687080000760034,
+    "taux_survie": 0.0,
+    "collisions": 30,
+    "victoires": 0,
+    "boucles": 0,
+    "objectif_moyenne_10": true
+  },
+  "parties": [
+    {
+      "seed": 42,
+      "score": 18,
+      "steps": 144,
+      "cause": "collision",
+      "duree_jeu_s": 28.8,
+      "decision_moy_ms": 0.5787138957708117,
+      "decision_max_ms": 2.7687080000760034,
+      "pas_par_pomme": 8.0
+    },
+    {
+      "seed": 43,
+      "score": 39,
+      "steps": 377,
+      "cause": "collision",
+      "duree_jeu_s": 75.4,
+      "decision_moy_ms": 0.5640757611915049,
+      "decision_max_ms": 1.2675340003625024,
+      "pas_par_pomme": 9.666666666666666
+    },
+    {
+      "seed": 44,
+      "score": 46,
+      "steps": 468,
+      "cause": "collision",
+      "duree_jeu_s": 93.6,
+      "decision_moy_ms": 0.5602282606979805,
+      "decision_max_ms": 1.129250002122717,
+      "pas_par_pomme": 10.173913043478262
+    },
+    {
+      "seed": 45,
+      "score": 36,
+      "steps": 340,
+      "cause": "collision",
+      "duree_jeu_s": 68.0,
+      "decision_moy_ms": 0.5269949057786588,
+      "decision_max_ms": 0.9081899988814257,
+      "pas_par_pomme": 9.444444444444445
+    },
+    {
+      "seed": 46,
+      "score": 28,
+      "steps": 244,
+      "cause": "collision",
+      "duree_jeu_s": 48.8,
+      "decision_moy_ms": 0.7766676311147137,
+      "decision_max_ms": 1.1080609983764589,
+      "pas_par_pomme": 8.714285714285714
+    },
+    {
+      "seed": 47,
+      "score": 33,
+      "steps": 356,
+      "cause": "collision",
+      "duree_jeu_s": 71.2,
+      "decision_moy_ms": 0.527262176996721,
+      "decision_max_ms": 0.8412460010731593,
+      "pas_par_pomme": 10.787878787878787
+    },
+    {
+      "seed": 48,
+      "score": 31,
+      "steps": 238,
+      "cause": "collision",
+      "duree_jeu_s": 47.6,
+      "decision_moy_ms": 0.5280047018856726,
+      "decision_max_ms": 0.8725949992367532,
+      "pas_par_pomme": 7.67741935483871
+    },
+    {
+      "seed": 49,
+      "score": 23,
+      "steps": 172,
+      "cause": "collision",
+      "duree_jeu_s": 34.4,
+      "decision_moy_ms": 0.5172906802367517,
+      "decision_max_ms": 0.8018700027605519,
+      "pas_par_pomme": 7.478260869565218
+    },
+    {
+      "seed": 50,
+      "score": 39,
+      "steps": 335,
+      "cause": "collision",
+      "duree_jeu_s": 67.0,
+      "decision_moy_ms": 0.5226805641310664,
+      "decision_max_ms": 0.7472489996871445,
+      "pas_par_pomme": 8.58974358974359
+    },
+    {
+      "seed": 51,
+      "score": 37,
+      "steps": 339,
+      "cause": "collision",
+      "duree_jeu_s": 67.8,
+      "decision_moy_ms": 0.5172129292605969,
+      "decision_max_ms": 0.7775899975968059,
+      "pas_par_pomme": 9.162162162162161
+    },
+    {
+      "seed": 52,
+      "score": 24,
+      "steps": 196,
+      "cause": "collision",
+      "duree_jeu_s": 39.2,
+      "decision_moy_ms": 0.5165130152855287,
+      "decision_max_ms": 0.6945900022401474,
+      "pas_par_pomme": 8.166666666666666
+    },
+    {
+      "seed": 53,
+      "score": 43,
+      "steps": 391,
+      "cause": "collision",
+      "duree_jeu_s": 78.2,
+      "decision_moy_ms": 0.5229060281724003,
+      "decision_max_ms": 0.8572699989599641,
+      "pas_par_pomme": 9.093023255813954
+    },
+    {
+      "seed": 54,
+      "score": 29,
+      "steps": 282,
+      "cause": "collision",
+      "duree_jeu_s": 56.4,
+      "decision_moy_ms": 0.5243805497371821,
+      "decision_max_ms": 1.0394759992777836,
+      "pas_par_pomme": 9.724137931034482
+    },
+    {
+      "seed": 55,
+      "score": 40,
+      "steps": 402,
+      "cause": "collision",
+      "duree_jeu_s": 80.4,
+      "decision_moy_ms": 0.5466529874680437,
+      "decision_max_ms": 1.1787660005211364,
+      "pas_par_pomme": 10.05
+    },
+    {
+      "seed": 56,
+      "score": 25,
+      "steps": 221,
+      "cause": "collision",
+      "duree_jeu_s": 44.2,
+      "decision_moy_ms": 0.5316189909860864,
+      "decision_max_ms": 0.9486909984843805,
+      "pas_par_pomme": 8.84
+    },
+    {
+      "seed": 57,
+      "score": 23,
+      "steps": 201,
+      "cause": "collision",
+      "duree_jeu_s": 40.2,
+      "decision_moy_ms": 0.515761532034813,
+      "decision_max_ms": 0.9564089996274561,
+      "pas_par_pomme": 8.73913043478261
+    },
+    {
+      "seed": 58,
+      "score": 31,
+      "steps": 337,
+      "cause": "collision",
+      "duree_jeu_s": 67.4,
+      "decision_moy_ms": 0.5175970564030687,
+      "decision_max_ms": 1.1903049999091309,
+      "pas_par_pomme": 10.870967741935484
+    },
+    {
+      "seed": 59,
+      "score": 54,
+      "steps": 526,
+      "cause": "collision",
+      "duree_jeu_s": 105.2,
+      "decision_moy_ms": 0.5205899506247161,
+      "decision_max_ms": 0.9326449981017504,
+      "pas_par_pomme": 9.74074074074074
+    },
+    {
+      "seed": 60,
+      "score": 49,
+      "steps": 426,
+      "cause": "collision",
+      "duree_jeu_s": 85.2,
+      "decision_moy_ms": 0.535498807504825,
+      "decision_max_ms": 0.9789860014279839,
+      "pas_par_pomme": 8.693877551020408
+    },
+    {
+      "seed": 61,
+      "score": 33,
+      "steps": 322,
+      "cause": "collision",
+      "duree_jeu_s": 64.4,
+      "decision_moy_ms": 0.5302522547495326,
+      "decision_max_ms": 0.9340479991806205,
+      "pas_par_pomme": 9.757575757575758
+    },
+    {
+      "seed": 62,
+      "score": 38,
+      "steps": 330,
+      "cause": "collision",
+      "duree_jeu_s": 66.0,
+      "decision_moy_ms": 0.5255136152603275,
+      "decision_max_ms": 0.8434720002696849,
+      "pas_par_pomme": 8.68421052631579
+    },
+    {
+      "seed": 63,
+      "score": 32,
+      "steps": 275,
+      "cause": "collision",
+      "duree_jeu_s": 55.0,
+      "decision_moy_ms": 0.5204121236800513,
+      "decision_max_ms": 0.7229430011648219,
+      "pas_par_pomme": 8.59375
+    },
+    {
+      "seed": 64,
+      "score": 35,
+      "steps": 330,
+      "cause": "collision",
+      "duree_jeu_s": 66.0,
+      "decision_moy_ms": 0.5333320544278566,
+      "decision_max_ms": 0.8816410008876119,
+      "pas_par_pomme": 9.428571428571429
+    },
+    {
+      "seed": 65,
+      "score": 32,
+      "steps": 246,
+      "cause": "collision",
+      "duree_jeu_s": 49.2,
+      "decision_moy_ms": 0.5157433291659378,
+      "decision_max_ms": 0.8178500029316638,
+      "pas_par_pomme": 7.6875
+    },
+    {
+      "seed": 66,
+      "score": 20,
+      "steps": 165,
+      "cause": "collision",
+      "duree_jeu_s": 33.0,
+      "decision_moy_ms": 0.53581631511792,
+      "decision_max_ms": 0.936882002861239,
+      "pas_par_pomme": 8.25
+    },
+    {
+      "seed": 67,
+      "score": 64,
+      "steps": 616,
+      "cause": "collision",
+      "duree_jeu_s": 123.2,
+      "decision_moy_ms": 0.5311764383592376,
+      "decision_max_ms": 0.9063299985427875,
+      "pas_par_pomme": 9.625
+    },
+    {
+      "seed": 68,
+      "score": 18,
+      "steps": 132,
+      "cause": "collision",
+      "duree_jeu_s": 26.4,
+      "decision_moy_ms": 0.5172299014785411,
+      "decision_max_ms": 0.6642520020250231,
+      "pas_par_pomme": 7.333333333333333
+    },
+    {
+      "seed": 69,
+      "score": 36,
+      "steps": 332,
+      "cause": "collision",
+      "duree_jeu_s": 66.4,
+      "decision_moy_ms": 0.5192413375124192,
+      "decision_max_ms": 0.8111930001177825,
+      "pas_par_pomme": 9.222222222222221
+    },
+    {
+      "seed": 70,
+      "score": 22,
+      "steps": 191,
+      "cause": "collision",
+      "duree_jeu_s": 38.2,
+      "decision_moy_ms": 0.5223069737730268,
+      "decision_max_ms": 1.9354469986865297,
+      "pas_par_pomme": 8.681818181818182
+    },
+    {
+      "seed": 71,
+      "score": 33,
+      "steps": 281,
+      "cause": "collision",
+      "duree_jeu_s": 56.2,
+      "decision_moy_ms": 0.49828385064329495,
+      "decision_max_ms": 0.5995869978505652,
+      "pas_par_pomme": 8.515151515151516
+    }
+  ]
+}

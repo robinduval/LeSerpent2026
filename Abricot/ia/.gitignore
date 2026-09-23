@@ -1,0 +1,4 @@
+# Environnement Python local (ne doit pas etre commite : ~2 Go)
+.venv/
+__pycache__/
+*.pyc

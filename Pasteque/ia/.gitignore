@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+results/*.pth
+!results/best_model.pth

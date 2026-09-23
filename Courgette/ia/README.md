@@ -1,5 +1,3 @@
-Comment ca on a pas de NOTE O_o o_o O_O o_O
-
 C'est ici que vous devez décrire votre timeline de la manière suivante (HH:MM : Activité / Constatation / Hypothèse / Réponse).
 Règle : une heure : une minute : une instruction par ligne, pas de saut de ligne.
 

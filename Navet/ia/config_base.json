@@ -1,0 +1,6 @@
+{
+  "seed": 0,
+  "episodes": 500,
+  "gamma": 0.9,
+  "note": "Baseline Loeber stricte. Flaws volontaires: eps=80-n_games, step+0.1, timeout=mort, pas de target. Etape 2 fixera tout un par un."
+}
