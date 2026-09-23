@@ -19,7 +19,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame  # noqa: E402
 
 from bench import engine  # noqa: E402
-from planner import SnakePlanner  # noqa: E402
+from planner import PlannerConfig, SnakePlanner  # noqa: E402
 
 
 def main():
@@ -41,7 +41,9 @@ def main():
 
     snake = eng.Snake()
     apple = eng.Apple(snake.body)
-    planner = SnakePlanner(eng.GRID_SIZE, eng.GRID_SIZE)
+    # Sans score cible, aucune pomme n'est terminale : le mode endgame (qui mange
+    # la 100e pomme sans certificat de survie) doit être désactivé.
+    planner = SnakePlanner(eng.GRID_SIZE, eng.GRID_SIZE, PlannerConfig(target_score=a.target))
     start = time.time()
     ticks = 0
     tick_100 = None

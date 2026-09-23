@@ -45,6 +45,7 @@ def play_game(args):
     seed, overrides, max_stall, target = args
     eng = engine()
     random.seed(seed)
+    overrides = {"target_score": target, **overrides}  # le planner doit connaître la fin de partie
     planner = SnakePlanner(eng.GRID_SIZE, eng.GRID_SIZE, PlannerConfig.from_overrides(overrides))
     snake = eng.Snake()
     apple = eng.Apple(snake.body)
