@@ -1,0 +1,249 @@
+{
+  "protocol": {
+    "seeds": [
+      201,
+      202,
+      203
+    ],
+    "grid_size": 15,
+    "initial_length": 3,
+    "growth": "delayed_until_next_move",
+    "max_score": 223,
+    "game_speed": 5,
+    "max_steps": 49952,
+    "invariants_checked_each_step": true,
+    "accelerated": true,
+    "seconds_x1_definition": "steps / GAME_SPEED; equivalent duration, not a measured GUI run",
+    "decision_timing": "select_action including internal cycle validation; excludes snapshot, engine, render, external verification",
+    "randomness": "independent seeded apple RNG, x-major free-cell order; policy sees only current immutable public state",
+    "python": "3.13.15",
+    "source_sha256": "b8337b3b3b9ef847c16fc7c8259361b2828dbc2a7f4947799e36df13cdd6f177",
+    "policies": [
+      "all128"
+    ],
+    "configurations": {
+      "all128": {
+        "search_budget": 128,
+        "beam_width": 4,
+        "apple_neutral": true,
+        "or_opt": true,
+        "or_lengths": null
+      }
+    },
+    "time_limit_ms": 20.0,
+    "workers": 1,
+    "latency_measurement_context": "isolated serial games",
+    "work_budget_reproducible": true
+  },
+  "summary": {
+    "all128": {
+      "games": 3,
+      "scores": [
+        223,
+        223,
+        223
+      ],
+      "completed": 3,
+      "collisions": 0,
+      "interruptions": 0,
+      "mean_steps_to_223": 4835.666666666667,
+      "mean_seconds_x1": 967.1333333333333,
+      "decision": {
+        "count": 14507,
+        "mean_ms": 0.8950613478320811,
+        "p95_ms": 0.407,
+        "max_ms": 20.480125
+      },
+      "decision_categories": {
+        "search": {
+          "count": 669,
+          "mean_ms": 13.891459708520179,
+          "p95_ms": 20.353917,
+          "max_ms": 20.480125
+        },
+        "ordinary": {
+          "count": 13838,
+          "mean_ms": 0.2667486940309293,
+          "p95_ms": 0.342583,
+          "max_ms": 4.154541
+        }
+      },
+      "median_steps_to_223": 4853,
+      "p95_steps_to_223": 5012,
+      "max_steps_to_223": 5012,
+      "slowest": [
+        {
+          "seed": 203,
+          "score": 223,
+          "steps": 5012,
+          "seconds_x1": 1002.4
+        },
+        {
+          "seed": 202,
+          "score": 223,
+          "steps": 4853,
+          "seconds_x1": 970.6
+        },
+        {
+          "seed": 201,
+          "score": 223,
+          "steps": 4642,
+          "seconds_x1": 928.4
+        }
+      ],
+      "mean_phase_steps": {
+        "1-50": 971.6666666666666,
+        "51-100": 1198.6666666666667,
+        "101-150": 1428.6666666666667,
+        "151-223": 1236.6666666666667
+      },
+      "search_totals": {
+        "deadline_hits": 431,
+        "candidates": 24758,
+        "revisits": 10920
+      },
+      "best": {
+        "seed": 201,
+        "score": 223,
+        "steps": 4642,
+        "seconds_x1": 928.4
+      }
+    }
+  },
+  "movement_reduction_percent": 0.0,
+  "benchmark_wall_seconds": 14.048122417007107,
+  "runs": [
+    {
+      "policy": "all128",
+      "seed": 201,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4642,
+      "steps_to_223": 4642,
+      "seconds_x1": 928.4,
+      "wall_seconds": 4.750769040998421,
+      "max_steps_between_apples": 98,
+      "decision": {
+        "count": 4642,
+        "mean_ms": 0.9504627352434296,
+        "p95_ms": 0.511875,
+        "max_ms": 20.424708
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 14.435395959641257,
+          "p95_ms": 20.362375,
+          "max_ms": 20.424708
+        },
+        "ordinary": {
+          "count": 4419,
+          "mean_ms": 0.26996033446481105,
+          "p95_ms": 0.344208,
+          "max_ms": 4.154541
+        }
+      },
+      "phase_steps": {
+        "1-50": 902,
+        "51-100": 1367,
+        "101-150": 1094,
+        "151-223": 1279
+      },
+      "search_totals": {
+        "deadline_hits": 150,
+        "candidates": 8728,
+        "revisits": 4117
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 202,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 4853,
+      "steps_to_223": 4853,
+      "seconds_x1": 970.6,
+      "wall_seconds": 4.601361499997438,
+      "max_steps_between_apples": 101,
+      "decision": {
+        "count": 4853,
+        "mean_ms": 0.874995484854729,
+        "p95_ms": 0.377958,
+        "max_ms": 20.434792
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 13.536747596412555,
+          "p95_ms": 20.345625,
+          "max_ms": 20.434792
+        },
+        "ordinary": {
+          "count": 4630,
+          "mean_ms": 0.2651529965442765,
+          "p95_ms": 0.344,
+          "max_ms": 3.607875
+        }
+      },
+      "phase_steps": {
+        "1-50": 908,
+        "51-100": 1120,
+        "101-150": 1606,
+        "151-223": 1219
+      },
+      "search_totals": {
+        "deadline_hits": 142,
+        "candidates": 7964,
+        "revisits": 2404
+      }
+    },
+    {
+      "policy": "all128",
+      "seed": 203,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 5012,
+      "steps_to_223": 5012,
+      "seconds_x1": 1002.4,
+      "wall_seconds": 4.6915809999918565,
+      "max_steps_between_apples": 100,
+      "decision": {
+        "count": 5012,
+        "mean_ms": 0.8631791436552274,
+        "p95_ms": 0.378958,
+        "max_ms": 20.480125
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 13.702235569506726,
+          "p95_ms": 20.347417,
+          "max_ms": 20.480125
+        },
+        "ordinary": {
+          "count": 4789,
+          "mean_ms": 0.26532790478179163,
+          "p95_ms": 0.340417,
+          "max_ms": 1.98475
+        }
+      },
+      "phase_steps": {
+        "1-50": 1105,
+        "51-100": 1109,
+        "101-150": 1586,
+        "151-223": 1212
+      },
+      "search_totals": {
+        "deadline_hits": 139,
+        "candidates": 8066,
+        "revisits": 4399
+      }
+    }
+  ]
+}

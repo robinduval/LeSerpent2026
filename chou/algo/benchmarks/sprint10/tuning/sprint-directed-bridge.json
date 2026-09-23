@@ -1,0 +1,134 @@
+[
+  {
+    "policy": "directed_bridge",
+    "seed": 201,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 3778,
+    "steps_to_223": 3778,
+    "seconds_x1": 755.6,
+    "wall_seconds": 5.789047082987963,
+    "max_steps_between_apples": 79,
+    "decision": {
+      "count": 3778,
+      "mean_ms": 1.457371988883007,
+      "p95_ms": 7.7235,
+      "max_ms": 22.554916
+    },
+    "decision_categories": {
+      "search": {
+        "count": 223,
+        "mean_ms": 17.046683448430493,
+        "p95_ms": 21.227125,
+        "max_ms": 22.554916
+      },
+      "ordinary": {
+        "count": 3555,
+        "mean_ms": 0.479477064697609,
+        "p95_ms": 1.077542,
+        "max_ms": 2.959458
+      }
+    },
+    "phase_steps": {
+      "1-50": 765,
+      "51-100": 982,
+      "101-150": 1032,
+      "151-223": 999
+    },
+    "search_totals": {
+      "deadline_hits": 163,
+      "candidates": 4530,
+      "revisits": 0
+    }
+  },
+  {
+    "policy": "directed_bridge",
+    "seed": 202,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 3631,
+    "steps_to_223": 3631,
+    "seconds_x1": 726.2,
+    "wall_seconds": 5.7684148749976885,
+    "max_steps_between_apples": 81,
+    "decision": {
+      "count": 3631,
+      "mean_ms": 1.5139928152024236,
+      "p95_ms": 13.075125,
+      "max_ms": 22.35675
+    },
+    "decision_categories": {
+      "search": {
+        "count": 223,
+        "mean_ms": 17.408572156950672,
+        "p95_ms": 21.308292,
+        "max_ms": 22.35675
+      },
+      "ordinary": {
+        "count": 3408,
+        "mean_ms": 0.4739425824530516,
+        "p95_ms": 1.032084,
+        "max_ms": 2.661542
+      }
+    },
+    "phase_steps": {
+      "1-50": 729,
+      "51-100": 924,
+      "101-150": 1140,
+      "151-223": 838
+    },
+    "search_totals": {
+      "deadline_hits": 168,
+      "candidates": 4797,
+      "revisits": 0
+    }
+  },
+  {
+    "policy": "directed_bridge",
+    "seed": 203,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 3804,
+    "steps_to_223": 3804,
+    "seconds_x1": 760.8,
+    "wall_seconds": 5.759620750002796,
+    "max_steps_between_apples": 100,
+    "decision": {
+      "count": 3804,
+      "mean_ms": 1.4355653101997898,
+      "p95_ms": 7.947458,
+      "max_ms": 22.721333
+    },
+    "decision_categories": {
+      "search": {
+        "count": 223,
+        "mean_ms": 17.097839076233186,
+        "p95_ms": 21.162458,
+        "max_ms": 22.721333
+      },
+      "ordinary": {
+        "count": 3581,
+        "mean_ms": 0.4602268433398492,
+        "p95_ms": 0.962625,
+        "max_ms": 3.385833
+      }
+    },
+    "phase_steps": {
+      "1-50": 602,
+      "51-100": 928,
+      "101-150": 1235,
+      "151-223": 1039
+    },
+    "search_totals": {
+      "deadline_hits": 160,
+      "candidates": 4239,
+      "revisits": 0
+    }
+  }
+]

@@ -1,5 +1,7 @@
 # Comparaison reproductible des agents Snake
 
+> Rapport historique de la comparaison initiale `fixed` / `explored64`. Voir [BENCHMARK.md](../BENCHMARK.md) pour l’agent actuellement livré. Les données originales sont conservées dans [original-baseline-results.json](original-baseline-results.json).
+
 Mesures sur les graines **1 à 20**, Python 3.13.15.
 Même moteur partagé avec le jeu affiché : tore 15×15, corps initial de trois cases, croissance différée et score maximal 223.
 
@@ -64,16 +66,16 @@ Les 40 parties sont complètes, sans collision ni interruption. Les mêmes grain
 - Invariants contrôlés avant et après chaque mouvement du benchmark. Chaque reconfiguration est aussi validée avant son application en production.
 - Attente maximale d’une pomme observée sur les 40 parties : 221 mouvements (borne conservatrice 224).
 - Le générateur du moteur n’est pas transmis à l’agent. Celui-ci reçoit seulement un snapshot public immuable et utilise un générateur d’exploration indépendant, déterministe depuis cet état.
-- 20 images ont aussi été rendues avec le vrai Pygame, en pilote vidéo sans fenêtre et sans attente ; grille, polices, pomme, serpent et fermeture vérifiés. Capture : `validation-frame.png`.
+- 20 images ont aussi été rendues avec le vrai Pygame, en pilote vidéo sans fenêtre et sans attente ; grille, polices, pomme, serpent et fermeture vérifiés. La capture temporaire n’est plus conservée.
 - La garantie de progression dépend du cycle complet compatible avec le corps, pas du seul ordre des segments. Aucun réseau de neurones ni apprentissage.
 
 ## Reproduire
 
 ```sh
 .venv/bin/python -m unittest discover -v
-.venv/bin/python serpent-algo.py --benchmark --seeds 1:21 --output benchmark-results.json
-.venv/bin/python serpent-algo.py --seed 15
+.venv/bin/python serpent-algo.py --benchmark --policies fixed,explored64 --seeds 1:21 --output benchmarks/recheck-original.json
+.venv/bin/python serpent-algo.py --policy explored64 --seed 15
 ```
 
-Données détaillées et protocole : `benchmark-results.json`.
+Données détaillées et protocole : [original-baseline-results.json](original-baseline-results.json).
 SHA-256 de `serpent-algo.py` mesuré : `67bb0baebdfd4d3bee328a7551ff1884df6ddc7d56c4ab65660b2e2636a38a55`.

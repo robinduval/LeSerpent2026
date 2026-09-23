@@ -58,45 +58,35 @@ Le cycle est temporairement normalisé avec la tête au rang 0. Les cases libres
 
 Ces opérations réordonnent les mêmes cases dans une unique liste cyclique. La validation complète après transformation confirme qu’aucun sous-cycle, doublon ou raccordement invalide n’est introduit.
 
-## Recherche retenue : `all128`
+## Transformation supplémentaire : 4-opt
 
-À chaque décision, une descente locale applique les transformations qui rapprochent directement la pomme. À l’initialisation et après chaque consommation, une exploration plus large complète cette descente :
+Le voisinage libre inclut `A+B+C+D+E → A+D+C+B+E`. Les blocs B, C et D sont non vides et entièrement libres. Les quatre raccordements A→D, D→C, C→B et B→E doivent être voisins sur le tore. La permutation conserve un unique cycle de 225 cases, et le suffixe contenant le corps reste intact. `_bridges()` calcule le nouveau rang de la pomme, `_apply()` prépare la permutation et `_certify()` confirme l’invariant complet.
 
-1. Quatre branches partent du meilleur cycle local disponible et partagent un budget total de **128 propositions exploratoires**.
-2. Des transformations neutres permettent d’explorer d’autres configurations de même distance.
-3. Chaque proposition est certifiée, puis améliorée par une nouvelle descente locale.
-4. Les cycles sont représentés par des tuples normalisés sur la tête. Un ensemble d’empreintes évite de revisiter les propositions déjà rencontrées ; plusieurs configurations distinctes de même distance peuvent subsister.
-5. Le meilleur cycle rencontré reste disponible, y compris la continuation initiale si aucune amélioration n’est obtenue.
+## Recherche retenue : `bridge_uphill`
 
-Le budget de 128 ne compte pas toutes les opérations élémentaires : les descentes locales, l’énumération des voisins et les validations s’y ajoutent. Une échéance coopérative de **20 ms** borne également la recherche par défaut. Une opération déjà commencée et la préparation finale peuvent dépasser légèrement cette échéance.
+Chaque mouvement commence par les améliorations locales 2-opt, Or-opt et 4-opt. Au départ et après chaque pomme, quatre branches explorent plusieurs cycles avec des empreintes normalisées sur la tête. Les propositions déjà visitées sont écartées et le meilleur cycle rencontré reste disponible, départ inclus.
 
-L’action choisie minimise la distance cyclique restante parmi les mouvements admissibles. Le cycle adopté ne doit jamais augmenter la distance à la pomme ; le mouvement exécuté doit la réduire **strictement**. Cette quantité entière décroissante empêche une boucle sans consommation. La borne conservatrice est de 224 déplacements par pomme.
+La recherche autorise des détours **virtuels** jusqu’à huit rangs au-delà du meilleur cycle, puis reprend les descentes locales. Seul le meilleur cycle est finalement adopté ; les déplacements réels restent strictement progressifs. Quatre branches partagent 256 propositions.
 
-Le hasard exploratoire est indépendant de celui des pommes et dérivé de l’état public. Sans limite murale, le plafond de travail et l’ordre de recherche rendent les essais reproductibles. Avec l’échéance de 20 ms, la charge de la machine peut changer le point d’arrêt et donc le parcours : une graine seule ne garantit pas les mêmes déplacements.
+L’échéance coopérative de 20 ms borne les recherches en plus du plafond de travail. Une opération déjà commencée peut dépasser légèrement cette échéance. La recherche retourne une continuation certifiée ; elle ne modifie jamais le jeu pendant ses explorations. Le cycle finalement adopté ne doit pas augmenter la distance à la pomme, et le mouvement exécuté doit la réduire strictement. Cette quantité entière décroissante exclut une boucle sans consommation.
 
-## Choix expérimentaux et limites
+Le hasard exploratoire dépend uniquement de l’état public et reste indépendant de celui des pommes. Le plafond de travail seul est reproductible ; l’échéance murale peut modifier le point d’arrêt selon la charge de la machine.
 
-L’ancien agent `explored64` et le cycle fixe `fixed` sont conservés comme comparateurs. Les autres variantes restent accessibles dans `POLICY_CONFIGS` pour reproduire les ablations, mais ne sont pas activées par défaut.
+## Compromis et résultats mesurés
 
-Les principaux gains viennent de l’élargissement du voisinage par Or-opt. Les branches seules n’ont pas amélioré le petit lot initial. Les essais de **3-opt supplémentaire**, de relance adaptative en cours de trajet et d’anticipation sur six mouvements n’ont pas présenté un compromis suffisamment favorable pour remplacer `all128`. L’anticipation simulait la croissance exacte et s’arrêtait à la pomme présente, sans consulter la suivante.
+L’ancien `all128`, `explored64` et `fixed` restent disponibles comme comparateurs. Le 4-opt est le principal changement utile du sprint : il ouvre des permutations que 2-opt et Or-opt seuls atteignent difficilement. Les variantes d’anticipation et les autres voisinages testés n’ont pas donné un gain assez net sur le petit lot de réglage. Le détail des choix se trouve dans [les ablations](benchmarks/sprint10/ABLATIONS.md).
 
-Les paramètres ont été réglés sur les graines 101–110, puis figés avant la comparaison finale sur 100 graines réservées, 1001–1100. Les graines historiques 1–20 servent à la régression. Les résultats finaux sont :
+Après réglage sur 201–203 et gel des paramètres, le lot réservé 2001–2100 donne **100/100 parties à 223**, **0 collision(s)** et **0 interruption(s)**. Le gagnant réalise **3 626,32 déplacements moyens**, soit **725,26 secondes x1**, avec **25,55 %** de déplacements en moins que `all128` rejoué sur ce même lot.
 
-| Mesure sur les 100 graines réservées | Ancien `explored64` | Agent livré `all128` |
-|---|---:|---:|
-| Parties terminées à 223 points | 100/100 | 100/100 |
-| Collisions / interruptions | 0 / 0 | 0 / 0 |
-| Déplacements moyens | 6 057,48 | **4 892,48** |
-| Déplacements médians | 6 046 | 4 916,5 |
-| Durée moyenne équivalente à 5 mouvements/s | 1 211,50 s | **978,50 s** |
+La cible de 4 500 mouvements est atteinte ; la cible de 3 000 mouvements / 600 secondes est **non atteinte**. La meilleure partie du gagnant parmi régression et lot réservé est la **seed 2010 : 223 points, 3152 mouvements, 630,4 secondes x1**. Ces durées sont calculées depuis les simulations accélérées, pas mesurées dans l’interface.
 
-Le gain mesuré est de **19,23 %**, mais la cible de **4 500 déplacements moyens n’est pas atteinte**, ni celle de 3 000. La sécurité des parcours ne constitue pas une preuve d’optimalité des déplacements.
+Le **record toutes variantes** est de **612,2 secondes x1** : `bridge128`, graine **2081**, **223 points en 3 061 déplacements**, sans collision ni interruption. Cette variante reste disponible avec `--policy bridge128`, mais `bridge_uphill` est retenu pour sa meilleure moyenne. Les deux records et leur source sont mis en évidence dans [BENCHMARK.md](BENCHMARK.md).
 
-La meilleure partie de l’agent livré parmi les lots de régression et réservé est la **graine 15 : score 223, 4 105 déplacements, soit 821 secondes x1**. Sur le lot réservé seul, sa meilleure partie est la graine 1063 : 4 247 déplacements, soit 849,4 secondes. Ces temps sont calculés par `déplacements / 5`, à partir de simulations accélérées ; ce ne sont pas des chronométrages réels de l’interface.
+La sécurité impose un corps contigu dans un cycle complet et écarte donc certains trajets potentiellement plus courts. L’optimisation porte sur la pomme actuelle ; elle ne prouve pas l’optimalité d’une partie entière. Le calcul supplémentaire reste borné, mais les latences sous six processus concurrents doivent être distinguées du fonctionnement interactif.
 
-Sur une mesure séparée sans concurrence, une décision ordinaire coûte en moyenne **0,262 ms** et une décision avec recherche **13,692 ms** ; le maximum de recherche observé est **20,471 ms**. Les 47 tests couvrent notamment le moteur, les bords, les invariants, les transformations, les délais expirés, la fin de partie et le redémarrage. Le rendu Pygame a également été contrôlé.
+La mesure complémentaire sans concurrence, sur deux graines, donne **0,437 ms** par décision ordinaire et **18,306 ms** par recherche en moyenne ; le maximum de recherche observé est **21,455 ms**. L’échéance est coopérative, et ces observations locales ne sont pas une garantie de latence sur toute machine.
 
-Les mesures détaillées, les latences et leurs limites sont dans [BENCHMARK.md](BENCHMARK.md), les essais intermédiaires dans [benchmarks/ABLATIONS.md](benchmarks/ABLATIONS.md) et les résultats par graine dans [benchmark-results.json](benchmark-results.json).
+Les **53 tests** vérifient moteur, croissance, bords, fin et redémarrage ainsi que les transformations, leurs rangs et les arrêts sûrs. Les chiffres complets et les limites de reproductibilité figurent dans [BENCHMARK.md](BENCHMARK.md) et [heldout.json](benchmarks/sprint10/heldout.json).
 
 ## Installer, lancer et vérifier
 
@@ -111,11 +101,12 @@ python3.13 -m venv .venv
 Le code utilise la bibliothèque standard et Pygame. NumPy reste présent dans l’environnement déclaré, mais l’agent ne l’utilise pas. Espace redémarre après la fin de partie ; `--manual` active le contrôle au clavier.
 
 ```sh
-.venv/bin/python serpent-algo.py --seed 15
-.venv/bin/python serpent-algo.py --policy explored64 --seed 15
+.venv/bin/python serpent-algo.py --seed 2010
+.venv/bin/python serpent-algo.py --policy bridge128 --seed 2081
+.venv/bin/python serpent-algo.py --policy all128 --seed 15
 .venv/bin/python -m unittest discover -v
-.venv/bin/python serpent-algo.py --benchmark --policies explored64,all128 --seeds 1:21 --output benchmarks/recheck-regression.json
-.venv/bin/python serpent-algo.py --benchmark --policies explored64,all128 --seeds 1001:1101 --workers 4 --output benchmarks/recheck-heldout.json
+.venv/bin/python serpent-algo.py --benchmark --policies all128,bridge128,bridge_uphill --seeds 1:21 --output benchmarks/recheck-regression.json
+.venv/bin/python serpent-algo.py --benchmark --policies all128,bridge128,bridge_uphill --seeds 2001:2101 --workers 6 --output benchmarks/recheck-heldout.json
 ```
 
 La borne finale des plages de graines est exclue : `1:21` correspond à 1–20. Utiliser `--workers 1` pour mesurer les latences sans concurrence. `--time-limit-ms 0` désactive seulement l’échéance de recherche, pas le plafond de propositions ni la cadence du jeu ; cette option permet les comparaisons déterministes au prix d’un calcul potentiellement plus long.

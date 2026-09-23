@@ -1,0 +1,134 @@
+[
+  {
+    "policy": "uphillbridge",
+    "seed": 201,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 3627,
+    "steps_to_223": 3627,
+    "seconds_x1": 725.4,
+    "wall_seconds": 6.001046208009939,
+    "max_steps_between_apples": 59,
+    "decision": {
+      "count": 3627,
+      "mean_ms": 1.576230022883926,
+      "p95_ms": 20.165208,
+      "max_ms": 21.293791
+    },
+    "decision_categories": {
+      "search": {
+        "count": 223,
+        "mean_ms": 18.271041887892377,
+        "p95_ms": 20.924334,
+        "max_ms": 21.293791
+      },
+      "ordinary": {
+        "count": 3404,
+        "mean_ms": 0.4825334759106933,
+        "p95_ms": 1.034667,
+        "max_ms": 5.61
+      }
+    },
+    "phase_steps": {
+      "1-50": 709,
+      "51-100": 888,
+      "101-150": 1027,
+      "151-223": 1003
+    },
+    "search_totals": {
+      "deadline_hits": 183,
+      "candidates": 4709,
+      "revisits": 0
+    }
+  },
+  {
+    "policy": "uphillbridge",
+    "seed": 202,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 3657,
+    "steps_to_223": 3657,
+    "seconds_x1": 731.4,
+    "wall_seconds": 6.054016624999349,
+    "max_steps_between_apples": 75,
+    "decision": {
+      "count": 3657,
+      "mean_ms": 1.5800908099535138,
+      "p95_ms": 20.16825,
+      "max_ms": 21.462208
+    },
+    "decision_categories": {
+      "search": {
+        "count": 223,
+        "mean_ms": 18.415171950672647,
+        "p95_ms": 20.753666,
+        "max_ms": 21.462208
+      },
+      "ordinary": {
+        "count": 3434,
+        "mean_ms": 0.48684005445544554,
+        "p95_ms": 1.114542,
+        "max_ms": 3.301875
+      }
+    },
+    "phase_steps": {
+      "1-50": 749,
+      "51-100": 850,
+      "101-150": 945,
+      "151-223": 1113
+    },
+    "search_totals": {
+      "deadline_hits": 185,
+      "candidates": 4552,
+      "revisits": 0
+    }
+  },
+  {
+    "policy": "uphillbridge",
+    "seed": 203,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 3202,
+    "steps_to_223": 3202,
+    "seconds_x1": 640.4,
+    "wall_seconds": 5.63346774999809,
+    "max_steps_between_apples": 74,
+    "decision": {
+      "count": 3202,
+      "mean_ms": 1.6828021642723296,
+      "p95_ms": 20.20125,
+      "max_ms": 21.234125
+    },
+    "decision_categories": {
+      "search": {
+        "count": 223,
+        "mean_ms": 18.14943408071749,
+        "p95_ms": 20.665375,
+        "max_ms": 21.234125
+      },
+      "ordinary": {
+        "count": 2979,
+        "mean_ms": 0.45015398791540784,
+        "p95_ms": 0.900917,
+        "max_ms": 3.287334
+      }
+    },
+    "phase_steps": {
+      "1-50": 581,
+      "51-100": 773,
+      "101-150": 902,
+      "151-223": 946
+    },
+    "search_totals": {
+      "deadline_hits": 182,
+      "candidates": 4435,
+      "revisits": 0
+    }
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "selected_policy": "bridge_uphill",
+  "mean_steps": 3626.32,
+  "mean_seconds_x1": 725.2639999999999,
+  "gain_percent": 25.545374098400377,
+  "best_reserved": {
+    "seed": 2010,
+    "score": 223,
+    "steps": 3152,
+    "seconds_x1": 630.4
+  },
+  "heldout": "heldout.json",
+  "regression": "regression.json",
+  "source_sha256": "cde784529cc8231e4412a0a55d169e6b9238b1b6a58310a72bd4910057921b02",
+  "tests_passed": 53,
+  "tests_seconds": 13.187,
+  "engine_and_rendering_unchanged": true
+}

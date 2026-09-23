@@ -1,0 +1,94 @@
+[
+  {
+    "policy": "uphill",
+    "seed": 201,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 4436,
+    "steps_to_223": 4436,
+    "seconds_x1": 887.2,
+    "wall_seconds": 20.784889082991867,
+    "max_steps_between_apples": 68,
+    "decision": {
+      "count": 4436,
+      "mean_ms": 4.609857031559964,
+      "p95_ms": 20.279875,
+      "max_ms": 20.457875
+    },
+    "decision_categories": {
+      "search": {
+        "count": 1044,
+        "mean_ms": 18.733683553639846,
+        "p95_ms": 20.341667,
+        "max_ms": 20.457875
+      },
+      "ordinary": {
+        "count": 3392,
+        "mean_ms": 0.26278306662735845,
+        "p95_ms": 0.343291,
+        "max_ms": 2.871625
+      }
+    },
+    "phase_steps": {
+      "1-50": 806,
+      "51-100": 1047,
+      "101-150": 1289,
+      "151-223": 1294
+    },
+    "search_totals": {
+      "deadline_hits": 834,
+      "candidates": 42805,
+      "revisits": 0
+    },
+    "temperature": 12,
+    "kick": 1
+  },
+  {
+    "policy": "uphill",
+    "seed": 202,
+    "score": 223,
+    "completed": true,
+    "collision": false,
+    "interrupted": false,
+    "steps": 4370,
+    "steps_to_223": 4370,
+    "seconds_x1": 874.0,
+    "wall_seconds": 21.30722895798681,
+    "max_steps_between_apples": 87,
+    "decision": {
+      "count": 4370,
+      "mean_ms": 4.800297770251716,
+      "p95_ms": 20.284958,
+      "max_ms": 20.450417
+    },
+    "decision_categories": {
+      "search": {
+        "count": 1055,
+        "mean_ms": 19.05595000379147,
+        "p95_ms": 20.34025,
+        "max_ms": 20.450417
+      },
+      "ordinary": {
+        "count": 3315,
+        "mean_ms": 0.26343107149321265,
+        "p95_ms": 0.340375,
+        "max_ms": 1.307875
+      }
+    },
+    "phase_steps": {
+      "1-50": 739,
+      "51-100": 1156,
+      "101-150": 1509,
+      "151-223": 966
+    },
+    "search_totals": {
+      "deadline_hits": 917,
+      "candidates": 52266,
+      "revisits": 0
+    },
+    "temperature": 12,
+    "kick": 1
+  }
+]

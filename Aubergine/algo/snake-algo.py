@@ -126,8 +126,8 @@ class SnakeBot:
     STEP_LIMIT = 80            # au-delà de ce nombre de coups sur une même pomme : plus de déviation, on suit
                                # le certificat (garantit que la pomme est mangée en au plus N coups)
     STEP_VARIANTS = 8          # variantes de chemin essayées pour les plans courts
-    STEP_MAX = 4               # longueur maximale d'un plan court (preuve à la fin seulement)
-    SHORT_FIRST = False        # essayer d'abord les plans les plus courts (plus faciles à prouver)
+    STEP_MAX = 1               # longueur maximale d'un plan court. Mesuré sur 16 parties : 1 pas = 3 365 coups,
+                               # 1 à 4 pas = 3 506 coups (et deux fois plus de calcul) : les plans longs nuisent
     STEP_TRIES = 6             # plans courts candidats qu'on tente de prouver à chaque fois
     # (poids de virage, poids de contact avec les cases libres, bruit) des variantes de plus court chemin
     VARIANTS = ((0.0, 0.0, 0.0), (0.04, 0.0, 0.0), (0.0, 0.03, 0.0), (0.0, -0.03, 0.0),
@@ -359,8 +359,7 @@ class SnakeBot:
                 score = len(steps) + w * future
                 if score < references[k]:
                     candidates[prefix] = (score, len(steps), final)
-        ranked = sorted(candidates.items(),
-                        key=lambda item: (len(item[0]) if self.SHORT_FIRST else 0, item[1][0], -len(item[0])))
+        ranked = sorted(candidates.items(), key=lambda item: (item[1][0], -len(item[0])))
         for prefix, (score, length, final) in ranked[:self.STEP_TRIES]:
             certificate = self._prove(cells, p, list(prefix), final, path)
             if certificate is not None:
