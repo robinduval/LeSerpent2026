@@ -1,0 +1,12 @@
+{
+  "protocol": "100 r\u00e9glage + 1000 validation finalistes ; score prioritaire ; simulations sans attente",
+  "workers": 8,
+  "sources": {
+    "snake-algo.py": "83c9e5f55e08f1da26a82162e3e52dfc06a63a4a4e0027cbdceceb4c2281e3f1",
+    "benchmark.py": "e4f2b629c446e5b5443b18693d78f869da98a8eb5d33451025a723eb2eb59e76",
+    "compare_methods.py": "9f713f6c67ce31bcf1fba24f00bc61961425879676aa842c0dbb09cb870c6d00"
+  },
+  "not_tested": {
+    "cell_tree": "Le pavage 2\u00d72 de la m\u00e9thode publi\u00e9e ne couvre pas le tore impair 15\u00d715 ; pas de modification des r\u00e8gles."
+  }
+}

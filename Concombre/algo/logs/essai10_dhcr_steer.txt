@@ -1,0 +1,30 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.3)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+=== BANC : algo=dhcr | 20 parties | graines 0..19 ===
+ graine  score     pas  temps(s)   mm:ss   ratio     issue
+      0    223    6619    1323.8   22:03  0.1685     FINIE
+      1    223    6997    1399.4   23:19  0.1594     FINIE
+      2    223    5872    1174.4   19:34  0.1899     FINIE
+      3    223    6411    1282.2   21:22  0.1739     FINIE
+      4    223    6360    1272.0   21:12  0.1753     FINIE
+      5    223    6639    1327.8   22:07  0.1679     FINIE
+      6    223    5944    1188.8   19:48  0.1876     FINIE
+      7    223    6528    1305.6   21:45  0.1708     FINIE
+      8    223    6806    1361.2   22:41  0.1638     FINIE
+      9    223    6025    1205.0   20:05  0.1851     FINIE
+     10    223    6292    1258.4   20:58  0.1772     FINIE
+     11    223    6804    1360.8   22:40  0.1639     FINIE
+     12    223    6668    1333.6   22:13  0.1672     FINIE
+     13    223    6252    1250.4   20:50  0.1783     FINIE
+     14    223    5862    1172.4   19:32  0.1902     FINIE
+     15    223    6355    1271.0   21:11  0.1755     FINIE
+     16    223    6429    1285.8   21:25  0.1734     FINIE
+     17    223    6659    1331.8   22:11  0.1674     FINIE
+     18    223    6633    1326.6   22:06  0.1681     FINIE
+     19    223    6522    1304.4   21:44  0.1710     FINIE
+--- PARTIES FINIES 20/20 (100%)  [critere n.1]
+--- score moyen 223.0 | score max 223 | score > 10 : 100%
+--- MEILLEURE PARTIE : graine 14 | score 223 | 5862 pas | 1172.4s (19:32) | ratio 0.1902 | FINIE
+--- pas moyen 6434 | temps moyen 1286.8s (21:26) | ratio moyen 0.1737 | meilleur ratio 0.1902 (5862 pas)
+--- pas/pomme global 28.9 | par remplissage  0-25%: 34.0  25-50%: 35.5  50-75%: 32.0  75-100%: 14.4
+--- diagnostic : 48.1% des pommes apparaissent derriere la tete sur le cycle | calcul 14.0s

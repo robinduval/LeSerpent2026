@@ -1,0 +1,39 @@
+{
+  "winner": {
+    "config": {
+      "algorithm": "shortcut",
+      "cutoff": 112,
+      "turn_offset": 3
+    },
+    "summary": {
+      "parties": 1000,
+      "score_total": 223000,
+      "score_mean": 223,
+      "score_median": 223.0,
+      "score_min": 223,
+      "score_max": 223,
+      "score_population_std": 0.0,
+      "victories": 1000,
+      "collisions": 0,
+      "truncated": 0,
+      "at_least_10": 1000,
+      "total_steps": 6651437,
+      "mean_steps": 6651.437,
+      "theoretical_seconds_5hz_mean": 1330.2874,
+      "theoretical_seconds_5hz_min": 1130.2,
+      "theoretical_seconds_5hz_max": 1496.6,
+      "theoretical_score_per_second_5hz_aggregate": 0.16763294909054993,
+      "mean_steps_per_apple": 29.827071748878925,
+      "theoretical_seconds_to_10_mean": 27.0806,
+      "batch_compute_wall_seconds": 61.99785554099071,
+      "simulation_steps_per_compute_second": 107284.95271263557,
+      "max_decision_ms": 45.55362500832416
+    },
+    "seed_first": 10000,
+    "seed_last": 10999,
+    "archive": "validation-shortcut-c112-o3.json.gz"
+  },
+  "total_wall_seconds": 126.32786520800437,
+  "folder": "/Users/spirey/SIGL/LeSerpent2026/Citron/algo/results/selection-20260923-210057",
+  "note": "Dur\u00e9es de jeu th\u00e9oriques \u00e0 5 Hz ; pas de preuve de s\u00fbret\u00e9 universelle."
+}
