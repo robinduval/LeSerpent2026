@@ -9,7 +9,7 @@ import time
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-strategy = sys.argv[1] if len(sys.argv) > 1 else "search"
+strategy = sys.argv[1] if len(sys.argv) > 1 else "search-plus"
 seed = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 sys.argv = ["snake-algo.py", strategy]
 random.seed(seed)
