@@ -1,0 +1,3 @@
+19:54 : On commence, on donne à l'IA un prompt en lui explicant la nuance de règle, on lui dit de lire le fichier du jeu, et le README general, puis on lui demande de nous conseiller les meilleurs algo pour tacler la question
+20:01 : On etudie les differents algorithmes conseillés par claude en les comprennants.
+20:07 : On part sur une implementation de l'algorithme Hamiltonien avec des raccourcis, avec une composante A*
