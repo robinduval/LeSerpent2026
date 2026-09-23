@@ -1,0 +1,41 @@
+[
+  {
+    "seed": 201,
+    "score": 223,
+    "completed": true,
+    "steps": 3623,
+    "seconds_x1": 724.6,
+    "wall_seconds": 5.270318875001976,
+    "mean_decision_ms": 1.41029295422714,
+    "max_decision_ms": 21.197374997427687,
+    "policy": "SignedBridgePolicy",
+    "time_limit_ms": 20,
+    "budget": 128
+  },
+  {
+    "seed": 202,
+    "score": 223,
+    "completed": true,
+    "steps": 3444,
+    "seconds_x1": 688.8,
+    "wall_seconds": 5.123800959001528,
+    "mean_decision_ms": 1.4378384266640347,
+    "max_decision_ms": 21.385000000009313,
+    "policy": "SignedBridgePolicy",
+    "time_limit_ms": 20,
+    "budget": 128
+  },
+  {
+    "seed": 203,
+    "score": 223,
+    "completed": true,
+    "steps": 3814,
+    "seconds_x1": 762.8,
+    "wall_seconds": 5.2977554999961285,
+    "mean_decision_ms": 1.337886598924895,
+    "max_decision_ms": 21.784999989904463,
+    "policy": "SignedBridgePolicy",
+    "time_limit_ms": 20,
+    "budget": 128
+  }
+]

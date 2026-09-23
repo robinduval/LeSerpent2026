@@ -1,0 +1,1 @@
+{"policies": ["bridge128", "bridge_uphill"], "frames_each": 10, "tick": 5, "driver": "dummy", "pygame_rendered": true, "closed": true}

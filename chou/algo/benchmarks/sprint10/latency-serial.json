@@ -1,0 +1,199 @@
+{
+  "protocol": {
+    "seeds": [
+      2001,
+      2002
+    ],
+    "grid_size": 15,
+    "initial_length": 3,
+    "growth": "delayed_until_next_move",
+    "max_score": 223,
+    "game_speed": 5,
+    "max_steps": 49952,
+    "invariants_checked_each_step": true,
+    "accelerated": true,
+    "seconds_x1_definition": "steps / GAME_SPEED; equivalent duration, not a measured GUI run",
+    "decision_timing": "select_action including internal cycle validation; excludes snapshot, engine, render, external verification",
+    "randomness": "independent seeded apple RNG, x-major free-cell order; policy sees only current immutable public state",
+    "python": "3.13.15",
+    "source_sha256": "cde784529cc8231e4412a0a55d169e6b9238b1b6a58310a72bd4910057921b02",
+    "policies": [
+      "bridge_uphill"
+    ],
+    "configurations": {
+      "bridge_uphill": {
+        "search_budget": 256,
+        "beam_width": 4,
+        "apple_neutral": true,
+        "or_opt": true,
+        "or_lengths": null,
+        "four_opt": true,
+        "uphill_margin": 8
+      }
+    },
+    "time_limit_ms": 20.0,
+    "workers": 1,
+    "latency_measurement_context": "isolated serial games",
+    "work_budget_reproducible": true
+  },
+  "summary": {
+    "bridge_uphill": {
+      "games": 2,
+      "scores": [
+        223,
+        223
+      ],
+      "completed": 2,
+      "collisions": 0,
+      "interruptions": 0,
+      "mean_steps_to_223": 3294.0,
+      "mean_seconds_x1": 658.8,
+      "decision": {
+        "count": 6588,
+        "mean_ms": 1.6467974209168186,
+        "p95_ms": 20.192917,
+        "max_ms": 21.455084
+      },
+      "decision_categories": {
+        "search": {
+          "count": 446,
+          "mean_ms": 18.30600178923767,
+          "p95_ms": 20.66025,
+          "max_ms": 21.455084
+        },
+        "ordinary": {
+          "count": 6142,
+          "mean_ms": 0.4370929031260176,
+          "p95_ms": 0.915833,
+          "max_ms": 2.070625
+        }
+      },
+      "median_steps_to_223": 3294.0,
+      "p95_steps_to_223": 3354,
+      "max_steps_to_223": 3354,
+      "slowest": [
+        {
+          "seed": 2002,
+          "score": 223,
+          "steps": 3354,
+          "seconds_x1": 670.8
+        },
+        {
+          "seed": 2001,
+          "score": 223,
+          "steps": 3234,
+          "seconds_x1": 646.8
+        }
+      ],
+      "mean_phase_steps": {
+        "1-50": 644.5,
+        "51-100": 794.0,
+        "101-150": 985.0,
+        "151-223": 870.5
+      },
+      "search_totals": {
+        "deadline_hits": 366,
+        "candidates": 10068,
+        "revisits": 62261
+      },
+      "best": {
+        "seed": 2001,
+        "score": 223,
+        "steps": 3234,
+        "seconds_x1": 646.8
+      }
+    }
+  },
+  "movement_reduction_percent": 0.0,
+  "benchmark_wall_seconds": 11.338749083006405,
+  "runs": [
+    {
+      "policy": "bridge_uphill",
+      "seed": 2001,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 3234,
+      "steps_to_223": 3234,
+      "seconds_x1": 646.8,
+      "wall_seconds": 5.6333063329948345,
+      "max_steps_between_apples": 78,
+      "decision": {
+        "count": 3234,
+        "mean_ms": 1.6682505930735931,
+        "p95_ms": 20.195875,
+        "max_ms": 21.455084
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 18.232311058295963,
+          "p95_ms": 20.6525,
+          "max_ms": 21.455084
+        },
+        "ordinary": {
+          "count": 3011,
+          "mean_ms": 0.4414868987047493,
+          "p95_ms": 0.953167,
+          "max_ms": 2.070625
+        }
+      },
+      "phase_steps": {
+        "1-50": 654,
+        "51-100": 784,
+        "101-150": 1014,
+        "151-223": 782
+      },
+      "search_totals": {
+        "deadline_hits": 184,
+        "candidates": 4829,
+        "revisits": 32222
+      }
+    },
+    {
+      "policy": "bridge_uphill",
+      "seed": 2002,
+      "score": 223,
+      "completed": true,
+      "collision": false,
+      "interrupted": false,
+      "steps": 3354,
+      "steps_to_223": 3354,
+      "seconds_x1": 670.8,
+      "wall_seconds": 5.703283291994012,
+      "max_steps_between_apples": 54,
+      "decision": {
+        "count": 3354,
+        "mean_ms": 1.6261118041144902,
+        "p95_ms": 20.189875,
+        "max_ms": 21.17375
+      },
+      "decision_categories": {
+        "search": {
+          "count": 223,
+          "mean_ms": 18.379692520179372,
+          "p95_ms": 20.66025,
+          "max_ms": 21.17375
+        },
+        "ordinary": {
+          "count": 3131,
+          "mean_ms": 0.43286731363781544,
+          "p95_ms": 0.874708,
+          "max_ms": 1.962875
+        }
+      },
+      "phase_steps": {
+        "1-50": 635,
+        "51-100": 804,
+        "101-150": 956,
+        "151-223": 959
+      },
+      "search_totals": {
+        "deadline_hits": 182,
+        "candidates": 5239,
+        "revisits": 30039
+      }
+    }
+  ]
+}

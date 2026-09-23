@@ -18,7 +18,7 @@ GRID_SIZE = 15
 CELL_SIZE = 30
 # Vitesse du serpent (déplacements par seconde)
 GAME_SPEED = 5
-DEFAULT_POLICY = "bridge_uphill"
+DEFAULT_POLICY = "all128"
 
 # Dimensions de l'écran (avec espace pour le score/timer)
 SCREEN_WIDTH = GRID_SIZE * CELL_SIZE
@@ -1480,10 +1480,10 @@ def parse_seeds(value):
 
 
 def cli():
-    parser = argparse.ArgumentParser(description="Snake algorithmique : cycle hamiltonien, 2-opt, Or-opt, 4-opt et recherche à quatre branches.")
+    parser = argparse.ArgumentParser(description="Snake algorithmique : cycle hamiltonien, 2-opt, Or-opt et recherche à quatre branches.")
     parser.add_argument("--seed", type=int, help="Graine de la partie affichée.")
     parser.add_argument("--manual", action="store_true", help="Jouer au clavier.")
-    parser.add_argument("--policy", default=DEFAULT_POLICY, help=f"Politique de la partie affichée (défaut {DEFAULT_POLICY}).")
+    parser.add_argument("--policy", default=DEFAULT_POLICY, help="Politique de la partie affichée (défaut all128).")
     parser.add_argument("--benchmark", action="store_true", help="Simulation accélérée, sans fenêtre.")
     parser.add_argument("--seeds", type=parse_seeds, default=list(range(1, 21)),
                         help="Graines du benchmark, défaut 1:21 (1 à 20).")

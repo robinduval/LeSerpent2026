@@ -18,7 +18,7 @@ GRID_SIZE = 15
 CELL_SIZE = 30
 # Vitesse du serpent (déplacements par seconde)
 GAME_SPEED = 5
-DEFAULT_POLICY = "bridge_uphill"
+DEFAULT_POLICY = "all128"
 
 # Dimensions de l'écran (avec espace pour le score/timer)
 SCREEN_WIDTH = GRID_SIZE * CELL_SIZE
@@ -697,15 +697,13 @@ class AdvancedCyclePolicy:
                  or_opt=False, adaptive=False, lookahead_depth=0,
                  time_limit_ms=None, or_lengths=(2,), lookahead_roots=False,
                  three_opt=False, stall_steps=4, search_distance=12,
-                 retain_plateaus=False, four_opt=False, uphill_margin=0):
+                 retain_plateaus=False):
         self.shield = RewiredCycleShield()
         self.search_budget = max(0, int(search_budget))
         self.beam_width = max(1, int(beam_width))
         self.apple_neutral = bool(apple_neutral)
         self.or_opt = bool(or_opt)
         self.three_opt = bool(three_opt)
-        self.four_opt = bool(four_opt)
-        self.uphill_margin = max(0, int(uphill_margin))
         self.retain_plateaus = bool(retain_plateaus)
         self.stall_steps = max(1, int(stall_steps))
         self.search_distance = max(2, int(search_distance))
@@ -733,7 +731,7 @@ class AdvancedCyclePolicy:
 
     def _two_opt(self, cycle, apple_rank, free_end, neutral=False):
         index = {cell: rank for rank, cell in enumerate(cycle)}
-        stop = max(0, free_end - 1) if neutral is not False else min(apple_rank, max(0, free_end - 1))
+        stop = max(0, free_end - 1) if neutral else min(apple_rank, max(0, free_end - 1))
         for first in range(stop):
             for neighbor in _CYCLE_NEIGHBORS[cycle[first]]:
                 last = index[neighbor]
@@ -744,7 +742,7 @@ class AdvancedCyclePolicy:
                 if neutral:
                     if new_rank != apple_rank or (contains and not self.apple_neutral):
                         continue
-                elif neutral is False and new_rank >= apple_rank:
+                elif new_rank >= apple_rank:
                     continue
                 if cycle[last + 1] in _CYCLE_NEIGHBORS[cycle[first + 1]]:
                     yield new_rank, ("reverse", first, last)
@@ -782,7 +780,7 @@ class AdvancedCyclePolicy:
                         new_rank = apple_rank - length
                     else:
                         new_rank = apple_rank
-                    if neutral is None or (new_rank == apple_rank if neutral else new_rank < apple_rank):
+                    if (new_rank == apple_rank if neutral else new_rank < apple_rank):
                         yield new_rank, ("relocate", start, end, after, reverse)
 
     def _three_opt(self, cycle, apple_rank, free_end, neutral=False):
@@ -815,47 +813,8 @@ class AdvancedCyclePolicy:
                     if (new_rank == apple_rank if neutral else new_rank < apple_rank):
                         yield new_rank, ("double_reverse", first, middle, last)
 
-    def _bridges(self, cycle, apple_rank, free_end, neutral=False):
-        """4-opt : A+B+C+D+E devient A+D+C+B+E sur trois blocs libres.
-
-        Les quatre nouveaux raccordements sont vérifiés. Les blocs non
-        vides gardent leur orientation, toutes les cases restent présentes
-        une fois et le suffixe contenant le corps ne change jamais.
-        """
-        index = {cell: rank for rank, cell in enumerate(cycle)}
-        neighbors = _CYCLE_NEIGHBORS
-        for first in range(max(0, free_end - 2)):
-            for cell in neighbors[cycle[first]]:
-                third = index[cell] - 1
-                if not first + 2 <= third <= free_end - 1:
-                    continue
-                if cycle[first + 1] not in neighbors[cycle[third]]:
-                    continue
-                for second in range(first + 1, third):
-                    for cell in neighbors[cycle[second]]:
-                        last = index[cell] - 1
-                        if not third + 1 <= last <= free_end:
-                            continue
-                        if cycle[second + 1] not in neighbors[cycle[last]]:
-                            continue
-                        if first < apple_rank <= second:
-                            new_rank = apple_rank + last - second
-                        elif second < apple_rank <= third:
-                            new_rank = apple_rank + last - third - second + first
-                        elif third < apple_rank <= last:
-                            new_rank = apple_rank - third + first
-                        else:
-                            new_rank = apple_rank
-                        if neutral is None or (new_rank == apple_rank if neutral else new_rank < apple_rank):
-                            yield new_rank, ("bridge", first, second, third, last)
-
     @staticmethod
     def _apply(cycle, descriptor):
-        if descriptor[0] == "bridge":
-            _, first, second, third, last = descriptor
-            return (cycle[:first + 1] + cycle[third + 1:last + 1]
-                    + cycle[second + 1:third + 1] + cycle[first + 1:second + 1]
-                    + cycle[last + 1:])
         if descriptor[0] == "reverse":
             _, first, last = descriptor
             return cycle[:first + 1] + cycle[first + 1:last + 1][::-1] + cycle[last + 1:]
@@ -877,8 +836,6 @@ class AdvancedCyclePolicy:
             yield from self._or_opt(cycle, apple_rank, free_end, neutral)
         if self.three_opt:
             yield from self._three_opt(cycle, apple_rank, free_end, neutral)
-        if self.four_opt:
-            yield from self._bridges(cycle, apple_rank, free_end, neutral)
 
     @staticmethod
     def _certify(cycle, state):
@@ -903,8 +860,6 @@ class AdvancedCyclePolicy:
         return cycle
 
     def _search(self, cycle, state, deadline=None):
-        if self.uphill_margin:
-            return self._search_perturbed(cycle, state, deadline)
         original = tuple(cycle)
         cycle = self._improve(original, state, deadline)
         best, best_rank = cycle, cycle.index(state.apple)
@@ -961,52 +916,6 @@ class AdvancedCyclePolicy:
             if candidate.index(state.apple) == best_rank))
         self.last_search_stats = stats
         self.shield.last_exploration_attempts = stats["candidates"]
-        return best
-
-    def _search_perturbed(self, cycle, state, deadline=None):
-        """Détours virtuels bornés; seul le meilleur cycle est rendu au jeu."""
-        cycle = self._improve(tuple(cycle), state, deadline)
-        best, best_rank = cycle, cycle.index(state.apple)
-        branches = [cycle] * self.beam_width
-        seen = {cycle}
-        rng = random.Random(state.steps * 101 + state.score * 31 + cycle_rank(state.apple))
-        free_end = BOARD_CELLS - len(state.body)
-        count = revisits = 0
-        for attempt in range(self.search_budget):
-            if best_rank <= 1 or self._expired(deadline):
-                break
-            lane = attempt % self.beam_width
-            parent = branches[lane]
-            choices = list(self._moves(parent, parent.index(state.apple), free_end, neutral=None))
-            rng.shuffle(choices)
-            candidate = None
-            for rank, move in choices:
-                if rank > best_rank + self.uphill_margin:
-                    continue
-                proposal = self._apply(parent, move)
-                if proposal in seen:
-                    revisits += 1
-                    continue
-                candidate = proposal
-                break
-            if candidate is None:
-                branches[lane] = best
-                continue
-            self._certify(candidate, state)
-            seen.add(candidate)
-            count += 1
-            plateau = candidate
-            candidate = self._improve(candidate, state, deadline)
-            repeated = candidate in seen
-            seen.add(candidate)
-            branches[lane] = plateau if repeated else candidate
-            rank = candidate.index(state.apple)
-            if rank < best_rank:
-                best, best_rank = candidate, rank
-        self.last_search_cycles = (best,)
-        self.last_search_stats = {"candidates": count, "revisits": revisits,
-                                  "unique": len(seen), "deadline_hit": self._expired(deadline)}
-        self.shield.last_exploration_attempts = count
         return best
 
     def _new_tail_connection(self, cycle, state):
@@ -1252,8 +1161,6 @@ def latency_summary(samples):
 
 # Paramètres d'ablation explicites ; les politiques historiques restent intactes.
 POLICY_CONFIGS = {
-    "bridge_uphill": {"search_budget": 256, "beam_width": 4, "apple_neutral": True, "or_opt": True, "or_lengths": None, "four_opt": True, "uphill_margin": 8},
-    "bridge128": {"search_budget": 128, "beam_width": 4, "apple_neutral": True, "or_opt": True, "or_lengths": None, "four_opt": True},
     "beam64": {"search_budget": 64, "beam_width": 4},
     "neutral64": {"search_budget": 64, "beam_width": 4, "apple_neutral": True},
     "oropt64": {"search_budget": 64, "beam_width": 4, "apple_neutral": True, "or_opt": True},
@@ -1480,10 +1387,10 @@ def parse_seeds(value):
 
 
 def cli():
-    parser = argparse.ArgumentParser(description="Snake algorithmique : cycle hamiltonien, 2-opt, Or-opt, 4-opt et recherche à quatre branches.")
+    parser = argparse.ArgumentParser(description="Snake algorithmique : cycle hamiltonien, 2-opt, Or-opt et recherche à quatre branches.")
     parser.add_argument("--seed", type=int, help="Graine de la partie affichée.")
     parser.add_argument("--manual", action="store_true", help="Jouer au clavier.")
-    parser.add_argument("--policy", default=DEFAULT_POLICY, help=f"Politique de la partie affichée (défaut {DEFAULT_POLICY}).")
+    parser.add_argument("--policy", default=DEFAULT_POLICY, help="Politique de la partie affichée (défaut all128).")
     parser.add_argument("--benchmark", action="store_true", help="Simulation accélérée, sans fenêtre.")
     parser.add_argument("--seeds", type=parse_seeds, default=list(range(1, 21)),
                         help="Graines du benchmark, défaut 1:21 (1 à 20).")
