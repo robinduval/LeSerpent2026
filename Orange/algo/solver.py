@@ -26,13 +26,13 @@ import random
 UP, DOWN, LEFT, RIGHT = (0, -1), (0, 1), (-1, 0), (1, 0)
 DIRECTIONS = (UP, DOWN, LEFT, RIGHT)
 
-MODES = ("POMME", "DETOUR", "RECHERCHE", "CLOTURE", "QUEUE", "SURVIE", "NAIF")
+MODES = ("POMME", "REMPLIR", "ANTICIPE", "DETOUR", "RECHERCHE", "CLOTURE", "QUEUE", "SURVIE", "NAIF")
 
 
 class Solver:
     def __init__(self, grid_size, strategy="safe", seed=None,
                  search_budget=300, search_cooldown=6, stall_noise=0.2, eat_margin=1,
-                 close_max_free=30):
+                 close_max_free=30, anticipate=0, fill_from=0.4):
         self.n = grid_size
         self.strategy = strategy  # "safe" (notre algo) ou "naive" (plus court chemin seul)
         self.rng = random.Random(seed)
@@ -41,6 +41,8 @@ class Solver:
         self.stall_noise = stall_noise          # proba. d'un coup sûr au hasard en temporisation
         self.eat_margin = eat_margin            # marge de survie exigée après un repas
         self.close_max_free = close_max_free    # clôture de fin de partie si <= N cases libres (0 = jamais)
+        self.anticipate = anticipate            # anticipe la pomme suivante si <= N cases libres (0 = jamais)
+        self.fill_from = fill_from              # mode remplissage dès longueur >= fill_from * grille (0 = jamais)
         self._cycle = None      # circuit de clôture : cellule -> cellule suivante
         self.plan = []   # cases prévues (pour l'affichage)
         self.mode = ""
@@ -200,7 +202,34 @@ class Solver:
         if path:
             self._pending = []
             self._cycle = None
-            return self._go("POMME", path, dir_of)
+            mode = "POMME"
+            # Remplissage : un chemin allongé qui ramasse les cases voisines,
+            # retenu s'il laisse moins de trous / culs-de-sac que le direct.
+            if self.fill_from and len(body) >= self.fill_from * self.n * self.n:
+                longer = self._lengthen(body, path)
+                if len(longer) > len(path):
+                    end = self.simulate(body, g, longer, apple)
+                    if end and self.is_safe(*end, margin=self.eat_margin):
+                        if self._holes(end[0]) < self._holes(self._after_path(body, g, path)):
+                            path, mode = longer, "REMPLIR"
+            # Anticipation : quand il reste peu de cases libres, on compare
+            # plusieurs chemins vers la pomme et on garde celui qui laisse le
+            # plus de positions possibles de la PROCHAINE pomme atteignables
+            # en sécurité.
+            if self.anticipate and self.n * self.n - len(body) - 1 <= self.anticipate:
+                options = [path]
+                for nb, _ in self.nbrs[head]:
+                    st = self.step(body, g, nb, apple)
+                    if st and nb != apple and self.is_safe(*st):
+                        p = self._safe_apple_path(*st, apple, fast=True)
+                        if p:
+                            options.append([nb] + p)
+                scored = [(self._future_score(self._after_path(body, g, p)), -len(p), i)
+                          for i, p in enumerate(options)]
+                best = max(scored)
+                if best[2] != 0 and best[0] > scored[0][0]:
+                    path, mode = options[best[2]], "ANTICIPE"
+            return self._go(mode, path, dir_of)
 
         # Coups qui mènent à un état certifié sûr, de préférence avec une marge
         # d'un coup (une pomme peut réapparaître sur la boucle de survie)
@@ -274,6 +303,61 @@ class Solver:
         if p and self.is_safe(self._after_path(body, g, p), True, margin=self.eat_margin):
             return p
         return None
+
+    def _lengthen(self, body, path):
+        """Allonge un chemin en remplaçant chaque pas a->b par a->a'->b'->b,
+        où a' et b' sont les voisins latéraux libres (méthode classique du
+        « plus long chemin » approché)."""
+        n = self.n
+        occupied = set(body)
+        p = [body[0]] + list(path)
+        used = set(p)
+        i = 0
+        while i < len(p) - 1:
+            a, b = p[i], p[i + 1]
+            dx, dy = next(d for c, d in self.nbrs[a] if c == b)
+            done = False
+            for px, py in ((dy, dx), (-dy, -dx)):  # directions perpendiculaires
+                a2 = ((a[0] + px) % n, (a[1] + py) % n)
+                b2 = ((b[0] + px) % n, (b[1] + py) % n)
+                if a2 != b2 and not ({a2, b2} & occupied) and not ({a2, b2} & used):
+                    p[i + 1:i + 1] = [a2, b2]
+                    used.update((a2, b2))
+                    done = True
+                    break
+            if not done:
+                i += 1
+        return p[1:]
+
+    def _holes(self, body):
+        """Mesure de fragmentation : cases libres hors de la plus grande zone
+        libre + cases libres en cul-de-sac (au plus un voisin libre)."""
+        occupied = set(body)
+        free = [c for c in self.nbrs if c not in occupied]
+        seen, sizes, dead = set(), [], 0
+        for c in free:
+            if sum(1 for v, _ in self.nbrs[c] if v not in occupied) <= 1:
+                dead += 1
+            if c in seen:
+                continue
+            seen.add(c)
+            q, size = deque([c]), 0
+            while q:
+                u = q.popleft()
+                size += 1
+                for v, _ in self.nbrs[u]:
+                    if v not in occupied and v not in seen:
+                        seen.add(v)
+                        q.append(v)
+            sizes.append(size)
+        return (sum(sizes) - max(sizes) if sizes else 0) + dead
+
+    def _future_score(self, body):
+        """Nombre de positions possibles de la prochaine pomme (cases libres
+        de l'état `body`, juste après le repas) atteignables en sécurité."""
+        occupied = set(body)
+        return sum(1 for c in self.nbrs if c not in occupied
+                   and self._safe_apple_path(body, True, c, fast=True))
 
     @staticmethod
     def _after_path(body, g, path):

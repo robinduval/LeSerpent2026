@@ -29,7 +29,7 @@ def play(args):
     snake = game.Snake()
     apple = game.Apple(snake.body)
     solver = Solver(game.GRID_SIZE, strategy=strategy, seed=seed, **params)
-    steps, idle = 0, 0
+    steps, idle, last_meal = 0, 0, 0
     lengths = []          # longueur après chaque coup
     apple_steps = []      # (longueur au moment du repas, coups pour l'atteindre)
     modes = {}
@@ -41,25 +41,27 @@ def play(args):
         snake.set_direction(direction)
         snake.move()
         steps += 1
-        idle += 1
+        if solver.mode not in ("POMME", "REMPLIR", "ANTICIPE", "DETOUR", "NAIF"):
+            idle += 1  # coup d'attente : aucun chemin sûr vers la pomme
         lengths.append(len(snake.body))
         if snake.is_game_over():
             break
         if snake.head_pos == list(apple.position):
-            apple_steps.append((len(snake.body), idle))
-            idle = 0
+            apple_steps.append((len(snake.body), steps - last_meal))
+            idle, last_meal = 0, steps
             snake.grow()
             if not apple.relocate(snake.body):
                 outcome = "victoire"
                 lengths.append(len(snake.body) + 1)
                 break
-        if idle > max_idle:
+        if idle > (max_idle or len(snake.body)):  # par défaut : un tour complet sans manger
             outcome = "bloqué"
             break
     return {
         "strategy": strategy, "seed": seed, "outcome": outcome, "score": snake.score,
         "final_len": lengths[-1], "steps": steps, "lengths": lengths,
         "apple_steps": apple_steps, "modes": modes, "time": time.perf_counter() - t0,
+        "game_time": steps / game.GAME_SPEED,  # durée de la partie à vitesse réelle (s)
     }
 
 
@@ -77,6 +79,8 @@ def summary(results):
     fill = sum(r["final_len"] for r in results) / n / total * 100
     win_steps = [r["steps"] for r in results if r["outcome"] == "victoire"]
     avg_win = sum(win_steps) / len(win_steps) if win_steps else float("nan")
+    game_time = sum(r["game_time"] for r in results) / n
+    cpu_time = sum(r["time"] for r in results) / n
     modes = {}
     for r in results:
         for m, c in r["modes"].items():
@@ -85,7 +89,9 @@ def summary(results):
     mode_txt = ", ".join(f"{m} {c / nsteps:.1%}" for m, c in sorted(modes.items(), key=lambda x: -x[1]))
     print(f"[{results[0]['strategy']}] {n} parties | victoires {wins} ({wins / n:.0%}) | "
           f"morts {deaths} | bloqué {stuck} | remplissage moyen {fill:.1f}% | "
-          f"coups moyens par victoire {avg_win:.0f} | temps moyen {sum(r['time'] for r in results) / n:.1f}s")
+          f"coups moyens par victoire {avg_win:.0f}")
+    print(f"    durée moyenne d'une partie à vitesse réelle ({game.GAME_SPEED} coups/s) : "
+          f"{game_time / 60:.1f} min | calcul : {cpu_time:.1f}s (accélération x{game_time / max(cpu_time, 1e-9):.0f})")
     print(f"    modes : {mode_txt}")
     return wins / n, fill
 
@@ -161,7 +167,12 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--strategy", default="safe", choices=["safe", "naive"])
     parser.add_argument("--compare", action="store_true", help="compare safe et naive")
-    parser.add_argument("--max-idle", type=int, default=2000, help="coups sans pomme avant « bloqué »")
+    parser.add_argument("--max-idle", type=int, default=0,
+                        help="coups d'attente avant « bloqué » (0 = longueur du serpent : un tour complet)")
+    parser.add_argument("--remplir", type=float, default=0.4,
+                        help="mode remplissage dès que le serpent occupe cette fraction de la grille (0 = désactivé)")
+    parser.add_argument("--anticipe", type=int, default=0,
+                        help="anticipe la prochaine pomme sous N cases libres (0 = désactivé)")
     parser.add_argument("--out", default=os.path.join(HERE, "bench.png"))
     parser.add_argument("--no-show", action="store_true")
     args = parser.parse_args()
@@ -169,7 +180,7 @@ def main():
     strategies = ["safe", "naive"] if args.compare else [args.strategy]
     all_results = {}
     for s in strategies:
-        all_results[s] = run(s, args.n, args.seed, args.max_idle)
+        all_results[s] = run(s, args.n, args.seed, args.max_idle, {"anticipate": args.anticipe, "fill_from": args.remplir})
         summary(all_results[s])
     dashboard(all_results, args.out, not args.no_show)
 
