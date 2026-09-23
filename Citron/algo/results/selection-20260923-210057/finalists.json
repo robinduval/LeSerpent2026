@@ -1,0 +1,17 @@
+[
+  {
+    "algorithm": "shortcut",
+    "cutoff": 112,
+    "turn_offset": 3
+  },
+  {
+    "algorithm": "shortcut",
+    "cutoff": 112,
+    "turn_offset": 1
+  },
+  {
+    "algorithm": "shortcut",
+    "cutoff": 112,
+    "turn_offset": 5
+  }
+]

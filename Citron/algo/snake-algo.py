@@ -21,8 +21,11 @@ base = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base)
 
 
+ALGORITHMS = ('hamiltonian', 'bfs-safe', 'shortcut', 'lookahead', 'dynamic')
+
+
 class Cycle:
-    def __init__(self, bidirectional=False):
+    def __init__(self, bidirectional=False, turn_offset=5):
         n = base.GRID_SIZE
         # Chaque ligne avance n-1 fois à droite, puis descend. Son origine
         # recule donc d'une colonne. Après n lignes, le cycle se referme.
@@ -34,7 +37,7 @@ class Cycle:
             # verticales voisines sur le tore. Un seul cycle est conservé.
             # La première ligne (et donc le corps initial) reste intacte.
             for r in range(1, n-1, 2):
-                i, j = r*n+5, (r+1)*n+6
+                i, j = r*n+turn_offset, (r+1)*n+turn_offset+1
                 self.cells[i+1:j+1] = reversed(self.cells[i+1:j+1])
         self.index = {cell: i for i, cell in enumerate(self.cells)}
 
@@ -46,14 +49,19 @@ class Cycle:
 
 
 class Game:
-    def __init__(self, seed, algorithm='hamiltonian'):
-        if algorithm not in ('hamiltonian', 'bfs-safe', 'shortcut'):
+    def __init__(self, seed, algorithm='hamiltonian', cutoff=112, turn_offset=5):
+        if algorithm not in ALGORITHMS:
             raise ValueError('Algorithme inconnu')
+        if not 1 <= cutoff <= 225 or not 0 <= turn_offset <= 12:
+            raise ValueError('cutoff : 1..225 ; turn_offset : 0..12')
+        self.cutoff, self.turn_offset = cutoff, turn_offset
+        self._planned_apple = None
         self.algorithm = algorithm
         self.decision = 'cycle'
         self.rng = random.Random(seed)
         self.snake = base.Snake()
-        self.cycle = Cycle(bidirectional=algorithm == 'shortcut')
+        self.cycle = Cycle(bidirectional=algorithm in ('shortcut', 'lookahead', 'dynamic'),
+                           turn_offset=turn_offset)
         self.apple = base.Apple.__new__(base.Apple)
         self.apple.position = self.place_apple()
         self.steps = self.without_food = self.wraps = 0
@@ -104,11 +112,15 @@ class Game:
         self.decision = 'cycle'
         if self.algorithm == 'hamiltonian':
             return fallback
+        if self.algorithm == 'dynamic':
+            return self.dynamic_target()
+        if self.algorithm == 'lookahead':
+            return self.lookahead_target()
         if self.algorithm == 'shortcut':
             # En fin de remplissage, des pommes consécutives peuvent retenir
             # la queue plusieurs tours. Revenir tôt au cycle pour résorber
             # les trous laissés par les raccourcis.
-            if len(self.snake.body) >= len(self.cycle.cells)//2:
+            if len(self.snake.body) >= self.cutoff:
                 return fallback
             # Raccourci glouton : maximiser l'avance sans dépasser la pomme.
             # Ne pas anticiper la libération de la queue : avec des pommes
@@ -161,6 +173,83 @@ class Game:
         self.decision = 'BFS / raccourci' if best != fallback else 'BFS / cycle'
         return best
 
+    def dynamic_target(self):
+        """Réparer le cycle libre par 2-opt à chaque nouvelle pomme.
+
+        Le serpent suit ensuite le cycle : aucun trou entre ses segments.
+        Les inversions ne touchent ni le corps ni son arc tête-queue.
+        """
+        head = tuple(self.snake.head_pos)
+        if self._planned_apple != self.apple.position:
+            self._planned_apple = self.apple.position
+            for _ in range(8):
+                index = self.cycle.index[head]
+                cells = self.cycle.cells[index:] + self.cycle.cells[:index]
+                ranks = {cell: i for i, cell in enumerate(cells)}
+                food = ranks[self.apple.position]
+                tail = ranks[tuple(self.snake.body[-1])]
+                best = None
+                for i in range(min(food, tail-1)):
+                    a, b = cells[i], cells[i+1]
+                    for dx, dy in (base.RIGHT, base.DOWN, base.LEFT, base.UP):
+                        c = ((a[0]+dx)%15, (a[1]+dy)%15)
+                        j = ranks[c]
+                        if not i+1 < j < tail or not i < food <= j:
+                            continue
+                        d = cells[(j+1)%225]
+                        delta = ((d[0]-b[0])%15, (d[1]-b[1])%15)
+                        gain = 2*food-i-j-1
+                        if delta in ((1,0),(14,0),(0,1),(0,14)) and gain > 0:
+                            candidate = (gain, i, j)
+                            if best is None or candidate > best:
+                                best = candidate
+                if best is None:
+                    break
+                _, i, j = best
+                cells[i+1:j+1] = reversed(cells[i+1:j+1])
+                self.cycle.cells = cells
+                self.cycle.index = {cell: i for i, cell in enumerate(cells)}
+        self.decision = 'cycle réparé (2-opt)'
+        return self.cycle.next(head)
+
+    def lookahead_target(self):
+        """Recherche de profondeur 3, croissance simulée, sans oracle des pommes."""
+        body = tuple(map(tuple, self.snake.body))
+        if len(body) >= self.cutoff:
+            return self.cycle.next(body[0])
+        origin = body[0]
+        food = self.apple.position
+
+        def search(body, direction, pending, depth):
+            if depth == 0:
+                return (0, self.cycle.distance(origin, body[0])), None
+            fallback = self.cycle.next(body[0])
+            occupied = set(body if pending else body[:-1])
+            space = self.cycle.distance(body[0], body[-1])-1-int(pending)
+            food_distance = self.cycle.distance(body[0], food)
+            best, choice = (-1, -1), None
+            for dx, dy in (base.RIGHT, base.DOWN, base.LEFT, base.UP):
+                if (dx, dy) == (-direction[0], -direction[1]):
+                    continue
+                target = ((body[0][0]+dx)%15, (body[0][1]+dy)%15)
+                advance = self.cycle.distance(body[0], target)
+                eats = target == food
+                safe = 0 < advance <= food_distance and advance < space-int(eats)
+                if target in occupied or not (safe or target == fallback):
+                    continue
+                if eats:
+                    value = (1, depth)
+                else:
+                    new_body = (target,) + (body if pending else body[:-1])
+                    value, _ = search(new_body, (dx,dy), False, depth-1)
+                if value > best:
+                    best, choice = value, target
+            return best, choice
+
+        _, target = search(body, self.snake.direction, self.snake.grow_pending, 3)
+        self.decision = 'anticipation 3 coups'
+        return target or self.cycle.next(origin)
+
     def metrics(self, elapsed):
         score = self.snake.score
         if score >= 10 and self.first_ten_seconds is None:
@@ -179,10 +268,11 @@ class Game:
 
 
 class Recorder:
-    def __init__(self, folder, seed, algorithm='hamiltonian'):
+    def __init__(self, folder, seed, algorithm='hamiltonian', cutoff=112, turn_offset=5):
         self.folder = folder
         folder.mkdir(parents=True, exist_ok=True)
         (folder/'config.json').write_text(json.dumps(dict(seed=seed, algorithm=algorithm,
+            cutoff=cutoff, turn_offset=turn_offset,
             grid_size=base.GRID_SIZE, clock_hz=base.GAME_SPEED), indent=2))
 
     def write(self, data):
@@ -248,17 +338,21 @@ class View:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--algorithm', choices=['hamiltonian', 'bfs-safe', 'shortcut'], default='shortcut')
+    parser.add_argument('--algorithm', choices=ALGORITHMS, default='shortcut')
+    parser.add_argument('--cutoff', type=int, default=112)
+    parser.add_argument('--turn-offset', type=int, default=3)
     parser.add_argument('--max-steps', type=int, default=0, help='Limite de diagnostic ; partie marquée interrompue')
     args = parser.parse_args()
     if args.max_steps < 0:
         parser.error('--max-steps doit être positif')
+    if not 1 <= args.cutoff <= 225 or not 0 <= args.turn_offset <= 12:
+        parser.error('--cutoff : 1..225 ; --turn-offset : 0..12')
     pygame.init()
     view = View()
-    game = Game(args.seed, args.algorithm)
+    game = Game(args.seed, args.algorithm, args.cutoff, args.turn_offset)
     pygame.display.set_caption(f'Citron | {args.algorithm} | 5 Hz')
     folder = ROOT/'runs'/datetime.now().strftime('%Y%m%d-%H%M%S-%f')
-    recorder = Recorder(folder, args.seed, args.algorithm)
+    recorder = Recorder(folder, args.seed, args.algorithm, args.cutoff, args.turn_offset)
     print(f'Métriques : {folder}', flush=True)
     clock = pygame.time.Clock()
     started = time.perf_counter()

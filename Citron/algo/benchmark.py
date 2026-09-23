@@ -17,9 +17,9 @@ algo = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(algo)
 
 
-def run_batch(seeds, algorithm='hamiltonian'):
+def run_batch(seeds, algorithm='hamiltonian', cutoff=112, turn_offset=5):
     # Environnements indépendants, entrelacés ; plusieurs lots en processus.
-    games = [(seed, algo.Game(seed, algorithm), {}) for seed in seeds]
+    games = [(seed, algo.Game(seed, algorithm, cutoff, turn_offset), {}) for seed in seeds]
     rows = []
     while games:
         active = []
@@ -35,7 +35,8 @@ def run_batch(seeds, algorithm='hamiltonian'):
                     theoretical_score_per_second_5hz=game.snake.score/seconds,
                     steps_per_apple=game.steps/max(1, game.snake.score),
                     steps_to_10=milestones.get('10'), milestone_steps=milestones,
-                    wraps=game.wraps, direction_counts=game.direction_counts))
+                    wraps=game.wraps, direction_counts=game.direction_counts,
+                    max_decision_ms=game.max_decision_ms))
             else:
                 active.append((seed, game, milestones))
         games = active
@@ -58,7 +59,8 @@ def summarize(rows, wall_seconds):
         theoretical_seconds_5hz_min=min(durations), theoretical_seconds_5hz_max=max(durations),
         theoretical_score_per_second_5hz_aggregate=sum(scores)/sum(durations),
         mean_steps_per_apple=statistics.mean(r['steps_per_apple'] for r in rows),
-        theoretical_seconds_to_10_mean=statistics.mean(r['steps_to_10']/5 for r in rows if r['steps_to_10'] is not None),
+        theoretical_seconds_to_10_mean=statistics.mean(r['steps_to_10']/5 for r in rows if r['steps_to_10'] is not None)
+        if any(r['steps_to_10'] is not None for r in rows) else None,
         batch_compute_wall_seconds=wall_seconds,
         simulation_steps_per_compute_second=steps/wall_seconds)
 
@@ -68,7 +70,9 @@ def main():
     p.add_argument('--games', type=int, default=100)
     p.add_argument('--workers', type=int, default=8)
     p.add_argument('--seed', type=int, default=1000)
-    p.add_argument('--algorithm', choices=['hamiltonian', 'bfs-safe', 'shortcut'], default='hamiltonian')
+    p.add_argument('--algorithm', choices=algo.ALGORITHMS, default='hamiltonian')
+    p.add_argument('--cutoff', type=int, default=112)
+    p.add_argument('--turn-offset', type=int, default=5)
     args = p.parse_args()
     if args.games < 1 or args.workers < 1:
         p.error('games et workers doivent être positifs')
@@ -79,12 +83,13 @@ def main():
     started = time.perf_counter()
     rows = []
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(run_batch, seeds[i::workers], args.algorithm) for i in range(workers)]
+        futures = [pool.submit(run_batch, seeds[i::workers], args.algorithm, args.cutoff, args.turn_offset) for i in range(workers)]
         for future in as_completed(futures):
             rows.extend(future.result())
             print(f'{len(rows)}/{args.games} parties terminées', flush=True)
     elapsed = time.perf_counter()-started
-    report = dict(algorithm=args.algorithm, seed_start=args.seed, workers=workers,
+    report = dict(algorithm=args.algorithm, cutoff=args.cutoff, turn_offset=args.turn_offset,
+        seed_start=args.seed, workers=workers,
         measurement='Simulation sans attente ; durées 5 Hz théoriques, non observées.',
         source_sha256=hashlib.sha256((ROOT/'snake-algo.py').read_bytes()).hexdigest(),
         summary=summarize(rows, elapsed), episodes=sorted(rows, key=lambda r:r['seed']))
