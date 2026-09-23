@@ -137,13 +137,16 @@ def play(agent, seed, max_stall=None, timing=False):
     since = 0
     last = 0
     worst = 0.0
+    slow = 0                  # coups dont le calcul dépasse une frame (1/5 s)
     t0 = time.perf_counter()
     while not g.over:
         if timing:
             t1 = time.perf_counter()
         d = agent.choose(g)
         if timing:
-            worst = max(worst, time.perf_counter() - t1)
+            dt = time.perf_counter() - t1
+            worst = max(worst, dt)
+            slow += dt > 0.2
         g.step(d)
         if g.score != last:
             last = g.score
@@ -154,4 +157,4 @@ def play(agent, seed, max_stall=None, timing=False):
                 break
     status = "won" if g.won else ("dead" if not g.alive else "stalled")
     return dict(seed=seed, status=status, score=g.score, moves=g.moves,
-                cpu=time.perf_counter() - t0, worst=worst)
+                cpu=time.perf_counter() - t0, worst=worst, slow=slow)

@@ -1,0 +1,12 @@
+{
+  "frames": 20,
+  "surface": [
+    450,
+    530
+  ],
+  "clock_tick_requested": 5,
+  "default_policy": "all128",
+  "seed": 1063,
+  "rendering": "real pygame, dummy SDL video/audio, waiting disabled for this check",
+  "closed": true
+}

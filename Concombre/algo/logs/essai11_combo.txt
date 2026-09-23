@@ -1,0 +1,30 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.3)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+=== BANC : algo=combo | 20 parties | graines 0..19 ===
+ graine  score     pas  temps(s)   mm:ss   ratio     issue
+      0    223    6106    1221.2   20:21  0.1826     FINIE
+      1    223    5954    1190.8   19:50  0.1873     FINIE
+      2    223    6366    1273.2   21:13  0.1751     FINIE
+      3    223    6194    1238.8   20:38  0.1800     FINIE
+      4    223    5770    1154.0   19:14  0.1932     FINIE
+      5    223    5909    1181.8   19:41  0.1887     FINIE
+      6    223    6206    1241.2   20:41  0.1797     FINIE
+      7    223    5520    1104.0   18:24  0.2020     FINIE
+      8    223    6437    1287.4   21:27  0.1732     FINIE
+      9    223    6564    1312.8   21:52  0.1699     FINIE
+     10    223    5968    1193.6   19:53  0.1868     FINIE
+     11    223    6121    1224.2   20:24  0.1822     FINIE
+     12    223    6779    1355.8   22:35  0.1645     FINIE
+     13    223    6419    1283.8   21:23  0.1737     FINIE
+     14    223    6122    1224.4   20:24  0.1821     FINIE
+     15    223    6135    1227.0   20:27  0.1817     FINIE
+     16    223    5907    1181.4   19:41  0.1888     FINIE
+     17    223    6482    1296.4   21:36  0.1720     FINIE
+     18    223    5693    1138.6   18:58  0.1959     FINIE
+     19    223    6514    1302.8   21:42  0.1712     FINIE
+--- PARTIES FINIES 20/20 (100%)  [critere n.1]
+--- score moyen 223.0 | score max 223 | score > 10 : 100%
+--- MEILLEURE PARTIE : graine 7 | score 223 | 5520 pas | 1104.0s (18:24) | ratio 0.2020 | FINIE
+--- pas moyen 6158 | temps moyen 1231.7s (20:31) | ratio moyen 0.1815 | meilleur ratio 0.2020 (5520 pas)
+--- pas/pomme global 27.6 | par remplissage  0-25%: 27.4  25-50%: 35.7  50-75%: 32.7  75-100%: 14.9
+--- diagnostic : 47.0% des pommes apparaissent derriere la tete sur le cycle | calcul 11.8s

@@ -1,0 +1,19 @@
+{
+  "objective": "complete at score 223 without collision, then minimize moves",
+  "game_speed": 5,
+  "regression_seeds": {"start_inclusive": 1, "stop_exclusive": 21},
+  "tuning_seeds": {"start_inclusive": 101, "stop_exclusive": 111},
+  "held_out_seeds": {"start_inclusive": 1001, "stop_exclusive": 1101},
+  "held_out_rule": "Do not run or inspect held-out seeds before freezing finalist configurations. No further tuning on held-out results.",
+  "baseline": "ExploredRewiredGreedyPolicy, original 64-exploration walk, kept unchanged",
+  "planned_ablations": [
+    "beam and visited fingerprints at 64 exploration proposals",
+    "neutral 2-opt reversals containing the apple",
+    "Or-opt relocations on free arc",
+    "adaptive mid-journey search triggers",
+    "4-8 step certified lookahead stopping at current apple",
+    "larger deterministic work budgets with 20 ms safety deadline"
+  ],
+  "validation": "same Game.step, cycle/body checked before and after every simulated move, future body certified before execution",
+  "timing": "accelerated simulation; x1 seconds = moves / 5; decision latencies separate expensive searches and ordinary moves"
+}

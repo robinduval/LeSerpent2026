@@ -13,7 +13,7 @@ import pygame
 #   core.py       simulateur / utilitaires de grille
 #   heuristic.py  stratégie 1 : A* + simulation virtuelle + flood fill
 #   hamilton.py   stratégie 2 : cycle hamiltonien dynamique + recherche A*
-# Usage : python snake-algo.py [search|heuristic|cycle|phc]   (défaut : search)
+# Usage : python snake-algo.py [search|search-plus|heuristic|cycle|phc]   (défaut : search)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
 STRATEGY = sys.argv[1] if len(sys.argv) > 1 else "search"
@@ -209,6 +209,9 @@ def make_agent(name):
     if name in ("search", "dyncycle-search"):
         import hamilton
         return hamilton.DynamicCycleSearch()
+    if name in ("search-plus", "plus"):
+        import dyncycle_plus
+        return dyncycle_plus.DynamicCycleSearchPlus()
     if name in ("heuristic", "heur"):
         import heuristic
         return heuristic.HeuristicEngine("corrected")
@@ -218,7 +221,7 @@ def make_agent(name):
     if name == "phc":
         import hamilton
         return hamilton.PHC()
-    raise SystemExit(f"stratégie inconnue : {name} (search | heuristic | cycle | phc)")
+    raise SystemExit(f"stratégie inconnue : {name} (search | search-plus | heuristic | cycle | phc)")
 
 
 class GameView:

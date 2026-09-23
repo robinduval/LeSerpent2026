@@ -1,30 +1,37 @@
 """
-Snake-algo : bot « cycle hamiltonien + raccourcis » pour le vrai jeu (serpent-algo.py).
+Snake-algo : bot pour le vrai jeu (serpent-algo.py), sans trou et avec garantie de victoire.
 
-Le fichier du jeu n'est PAS modifié ni recopié : on l'importe et on lance sa vraie
-fonction main(). Le bot s'y branche par sous-classes de Snake et d'Apple (le jeu les
-cherche dans ses globals) : à chaque déplacement, le bot choisit la direction avec le
-set_direction() du jeu, puis Snake.move() du jeu s'exécute tel quel.
+Le fichier du jeu n'est PAS modifié ni recopié : on l'importe et on lance sa vraie fonction main().
+Le bot s'y branche par des sous-classes de Snake et d'Apple (le jeu les cherche dans ses globals) :
+à chaque déplacement le bot choisit la direction avec le set_direction() du jeu, puis le Snake.move()
+du jeu s'exécute tel quel.
 
-Algorithme (en couches) :
-  1. Cycle hamiltonien sur le tore : idx[case] dans [0, N), rel(c) = (idx[c] - idx[tête]) mod N.
-  2. Invariant : en avançant depuis la queue le long du cycle, on croise le corps dans l'ordre.
-     Toutes les cases de rel 1 à rel(queue)-1 sont donc vides. On n'ose que rel <= limite.
-  3. Plus court chemin vers la pomme dans le graphe sans cycle « rel croissant », par
-     programmation dynamique en O(N), recalculé à chaque coup.
-  4. (option --dynamic) Cycle dynamique : à chaque nouvelle pomme, la partie libre du cycle
-     (entre la tête et la queue) est remplacée par un autre chemin hamiltonien de ces cases
-     qui place la pomme plus tôt. Validation stricte, sinon l'ancien cycle est gardé.
-  5. (option --libre) Raccourcis à travers toutes les cases libres de la zone : un plan de la tête à la
-     pomme, plus court que celui de la couche 3, n'est suivi que si un cycle hamiltonien valide (corps
-     dans l'ordre) a pu être reconstruit pour l'état final. Les cases sautées ne deviennent pas des trous.
+IDÉE CENTRALE
+La pomme apparaît au hasard parmi les cases libres. Si les cases libres forment un seul bloc compact
+près de la tête, la pomme est toujours proche. Si elles sont éparpillées (« trous »), la pomme tombe
+souvent dans un recoin inaccessible et il faut attendre un tour complet. Le bot maintient donc en
+permanence un CERTIFICAT : un chemin hamiltonien des cases libres, qui part d'un voisin de la tête et
+finit sur un voisin de la queue. Tant qu'il existe, suivre ce chemin est toujours possible et sûr, et
+la pomme est toujours sur ce chemin : victoire garantie. Toutes les couches ci-dessous sont toujours actives.
+
+COUCHES
+  1. Cycle hamiltonien du tore : donne le certificat de départ (le corps de départ est dans son ordre).
+  2. Certificat mis à jour à chaque pas : on retire la case franchie, on ajoute la case quittée par la queue.
+  3. Candidats de raccourci : plusieurs plus courts chemins réels de la tête à la pomme à travers les cases
+     libres (Dijkstra : virages, contact avec le corps, bruit) au lieu de suivre le cycle.
+  4. Preuve : pour chaque raccourci, l'état final (après avoir mangé) doit avoir un certificat. On recolle
+     d'abord les tronçons de l'ancien certificat, sinon un solveur hamiltonien (recherche en profondeur avec
+     ordre de Warnsdorff et élagage des culs-de-sac et des cases isolées) en construit un autre.
+  5. Choix par « espace libre futur » : coups du raccourci + distance moyenne de la tête aux cases libres
+     restantes (= coût attendu de la pomme suivante). Les raccourcis qui laissent un bloc libre compact
+     près de la tête gagnent ; ils remplissent en priorité les cases qui éloigneraient la prochaine pomme.
+  6. Filet de sécurité : si un pas était illégal ou si tout échoue, on garde le certificat courant.
 
 Usage :
-  python snake-algo.py                      # fenêtre, vitesse 30 images/s
+  python snake-algo.py                      # fenêtre, 30 images/s
   python snake-algo.py --fps 5              # vitesse d'origine du jeu
   python snake-algo.py --fps 0              # aussi vite que possible
-  python snake-algo.py --direct             # mode risqué : plus court chemin réel, sans garantie
-  python snake-algo.py --headless --games 20 --jobs 8 --debug   # vrai jeu sans fenêtre
+  python snake-algo.py --headless --games 6 --jobs 6 --debug   # vrai jeu sans fenêtre
 """
 import argparse
 import heapq
@@ -33,21 +40,21 @@ import os
 import random
 import sys
 import time
+from collections import deque
 from pathlib import Path
 
-INF = 10 ** 9
+sys.setrecursionlimit(5000)
 
 
 class _BudgetExceeded(Exception):
-    """Budget de calcul de la couche 4 dépassé : on garde l'ancien cycle."""
+    """Budget de calcul dépassé : le candidat est abandonné, le certificat courant est gardé."""
 
 
-# --- COUCHE 1 : CYCLE HAMILTONIEN ---
+# --- COUCHE 1 : CYCLE HAMILTONIEN (certificat de départ) ---
 
 def _zigzag(width, height):
-    """Colonne 0 réservée au retour, aller-retours sur les colonnes 1..width-1.
-    Sans passage de mur si height est pair ; si height est impair (et width impair),
-    la dernière ligne finit en (width-1, height-1) et se referme par un mur."""
+    """Colonne 0 réservée au retour, aller-retours sur les colonnes 1..width-1. Sans passage de mur si
+    height est pair ; si height et width sont impairs, la dernière ligne se referme par un mur."""
     cycle = [(x, 0) for x in range(width)]
     for y in range(1, height):
         xs = range(width - 1, 0, -1) if y % 2 == 1 else range(1, width)
@@ -57,20 +64,18 @@ def _zigzag(width, height):
 
 
 def build_cycle(width, height, wrap=True):
-    """Construit un cycle hamiltonien de la grille width x height (liste de (x, y))."""
+    """Cycle hamiltonien de la grille width x height (liste de (x, y))."""
     if width < 3 or height < 3:
         raise ValueError("Grille trop petite (minimum 3x3).")
     if height % 2 == 0:
         cycle = _zigzag(width, height)
     elif width % 2 == 0:
-        cycle = [(x, y) for (y, x) in _zigzag(height, width)]  # transposée
+        cycle = [(x, y) for (y, x) in _zigzag(height, width)]
     elif wrap:
-        cycle = _zigzag(width, height)  # deux dimensions impaires : le mur sert d'arête
+        cycle = _zigzag(width, height)
     else:
-        raise ValueError(
-            f"Grille {width}x{height} : deux dimensions impaires, pas de cycle hamiltonien "
-            "sans traverser les murs (nombre de cases impair)."
-        )
+        raise ValueError(f"Grille {width}x{height} : deux dimensions impaires, pas de cycle hamiltonien "
+                         "sans traverser les murs (nombre de cases impair).")
     validate_cycle(cycle, width, height, wrap)
     return cycle
 
@@ -92,8 +97,7 @@ def validate_cycle(cycle, width, height, wrap=True):
 
 
 def _orient_cycle(cycle, width, height, body):
-    """Choisit la symétrie/sens du cycle dans lequel le corps de départ (queue -> tête)
-    est déjà rangé dans l'ordre du cycle (invariant vrai dès le premier coup)."""
+    """Symétrie/sens du cycle dans lequel le corps de départ (queue -> tête) est rangé dans l'ordre."""
     tail_to_head = [tuple(p) for p in reversed(body)]
     for flip_x in (False, True):
         for flip_y in (False, True):
@@ -101,59 +105,64 @@ def _orient_cycle(cycle, width, height, body):
             for candidate in (base, base[::-1]):
                 pos = {c: i for i, c in enumerate(candidate)}
                 if all(c in pos for c in tail_to_head) and all(
-                    (pos[b] - pos[a]) % len(candidate) == 1 for a, b in zip(tail_to_head, tail_to_head[1:])
-                ):
+                        (pos[b] - pos[a]) % len(candidate) == 1 for a, b in zip(tail_to_head, tail_to_head[1:])):
                     return candidate
     raise ValueError("Aucune orientation du cycle ne contient le serpent de départ dans l'ordre.")
 
 
-# --- COUCHES 2 ET 3 : SÉCURITÉ ET PLUS COURT CHEMIN CONTRAINT ---
+# --- LE BOT ---
 
-class CycleBot:
-    """Choisit la direction à chaque coup. Toutes les cases sont des entiers x + y * width."""
+class SnakeBot:
+    """Toutes les cases sont des entiers x + y * width. `path` est le certificat : chemin hamiltonien des
+    cases libres, d'un voisin de la tête à un voisin de la queue."""
 
-    def __init__(self, width, height, initial_body, wrap=True, growth=1, margin=2, debug=False,
-                 dynamic=False, dyn_fill=0.0, dyn_budget=20000, tie_holes=True, libre=False, plan_budget=5000, l3=True):
+    DIRS = ((0, -1), (0, 1), (-1, 0), (1, 0))  # haut, bas, gauche, droite : l'inverse de d est d ^ 1
+    FUTURE_WEIGHT = 1.0        # poids de la distance moyenne aux cases libres restantes
+    RETRY_EVERY = 10           # coups entre deux recherches de raccourci sur la même pomme
+    SOLVER_NODES = 4000        # budget du solveur hamiltonien par candidat
+    RELINK_NODES = 1500        # budget du recollage de tronçons par candidat
+    RESTARTS = 6               # recherches courtes du solveur (le budget SOLVER_NODES est partagé)
+    MAX_TRIES = 4              # candidats meilleurs que le cycle qu'on tente de prouver par pomme
+    STEP_LIMIT = 80            # au-delà de ce nombre de coups sur une même pomme : plus de déviation, on suit
+                               # le certificat (garantit que la pomme est mangée en au plus N coups)
+    STEP_VARIANTS = 8          # variantes de chemin essayées pour les plans courts
+    STEP_MAX = 4               # longueur maximale d'un plan court (preuve à la fin seulement)
+    SHORT_FIRST = False        # essayer d'abord les plans les plus courts (plus faciles à prouver)
+    STEP_TRIES = 6             # plans courts candidats qu'on tente de prouver à chaque fois
+    # (poids de virage, poids de contact avec les cases libres, bruit) des variantes de plus court chemin
+    VARIANTS = ((0.0, 0.0, 0.0), (0.04, 0.0, 0.0), (0.0, 0.03, 0.0), (0.0, -0.03, 0.0),
+                (0.03, 0.02, 0.0), (0.03, -0.02, 0.0), (0.0, 0.0, 0.10), (0.0, 0.0, 0.10),
+                (0.0, 0.0, 0.10), (0.0, 0.0, 0.35), (0.0, 0.0, 0.35), (0.0, 0.0, 0.35))
+
+    def __init__(self, width, height, initial_body, wrap=True, debug=False):
         self.width, self.height, self.wrap = width, height, wrap
         self.n = width * height
-        self.growth = growth
-        self.margin = margin
         self.debug = debug
-        cycle = _orient_cycle(build_cycle(width, height, wrap), width, height, initial_body)
-        self.cyc = [x + y * width for x, y in cycle]
-        self.idx = [0] * self.n
-        self._reindex()
         self.nbrs = [self._neighbors(c) for c in range(self.n)]
         self.nbset = [set(v) for v in self.nbrs]
-        self.fallbacks = 0  # nombre de fois où le filet de sécurité final a dû intervenir
-        self.violations = []  # messages (mode debug) : invariant rompu, coup illégal ou sans issue
-        # couche 4 : cycle dynamique
-        self.dynamic = dynamic
-        self.dyn_fill = dyn_fill
-        self.dyn_budget = dyn_budget
-        self.last_apple = None
-        self.l4 = {"essais": 0, "acceptes": 0, "gain": 0, "temps": 0.0, "sans_gain": 0, "echec": 0, "budget": 0, "hors_zone": 0}
-        self._ops = 0
-        self._budget = dyn_budget
-        # couche 3 : départage des chemins de même longueur par le nombre de sauts (trous)
-        self.tie_holes = tie_holes
-        self.l3 = l3  # False : la couche 3 ne fait plus de raccourcis (suit le cycle), seule la couche 5 en fait
-        # couche 5 : plans de raccourci à travers les cases libres, cycle reconstruit et validé
-        self.libre = libre
-        self.plan_budget = plan_budget
+        self.step_to = [[self._step(c, d) for d in range(4)] for c in range(self.n)]
+        self.rng = random.Random(12345)  # générateur à part : ne touche pas au hasard du jeu
+        # certificat de départ : les cases du cycle entre la tête et la queue
+        cycle = _orient_cycle(build_cycle(width, height, wrap), width, height, initial_body)
+        order = [x + y * width for x, y in cycle]
+        head_pos = order.index(self.cell(initial_body[0]))
+        self.path = deque(order[(head_pos + k) % self.n] for k in range(1, self.n - len(initial_body) + 1))
         self.plan = None
-        self.last_plan_apple = None
-        self.l5 = {"essais": 0, "acceptes": 0, "gain": 0, "temps": 0.0, "sans_gain": 0, "echec": 0,
-                   "budget": 0, "hors_zone": 0, "abandons": 0}
+        self.last_apple = None
+        self.since_try = 0
+        self.apple_moves = 0
+        self._ops = self._budget = 0
+        self.fallbacks = 0
+        self.violations = []
+        self.stats = {"pommes": 0, "raccourcis": 0, "recollage": 0, "solveur": 0, "echec": 0, "gain": 0,
+                      "temps": 0.0, "pas": 0, "pas_1": 0, "pas_2": 0, "pas_3": 0, "pas_4": 0}
 
-    def _reindex(self):
-        for i, c in enumerate(self.cyc):
-            self.idx[c] = i
+    # --- outils ---
 
     def _neighbors(self, c):
         x, y = c % self.width, c // self.width
         out = []
-        for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+        for dx, dy in self.DIRS:
             nx, ny = x + dx, y + dy
             if self.wrap:
                 nx, ny = nx % self.width, ny % self.height
@@ -162,180 +171,315 @@ class CycleBot:
             out.append(nx + ny * self.width)
         return out
 
+    def _step(self, c, d):
+        dx, dy = self.DIRS[d]
+        return (c % self.width + dx) % self.width + ((c // self.width + dy) % self.height) * self.width
+
     def cell(self, pos):
         return pos[0] + pos[1] * self.width
 
-    def check_invariant(self, body):
-        """Mode debug : corps rangé dans l'ordre du cycle, sans collision, longueur == cases occupées."""
-        ih = self.idx[self.cell(body[0])]
-        rels = [(self.idx[self.cell(p)] - ih) % self.n for p in body]
-        assert len({self.cell(p) for p in body}) == len(body), "collision ou case comptée deux fois"
-        assert all(rels[i] > rels[i + 1] for i in range(1, len(rels) - 1)), "invariant du cycle rompu"
-        validate_cycle([(c % self.width, c // self.width) for c in self.cyc], self.width, self.height, self.wrap)
-        assert all(self.idx[c] == i for i, c in enumerate(self.cyc)), "idx désynchronisé du cycle"
+    def _direction(self, head_pos, cell):
+        dx, dy = cell % self.width - head_pos[0], cell // self.width - head_pos[1]
+        if self.wrap:
+            if dx in (self.width - 1, -(self.width - 1)):
+                dx = -1 if dx > 0 else 1
+            if dy in (self.height - 1, -(self.height - 1)):
+                dy = -1 if dy > 0 else 1
+        return (dx, dy)
+
+    def _is_legal(self, cell, cells, pending):
+        """Vraie règle du jeu : la case ne doit pas être dans le corps une fois la queue retirée."""
+        return cell not in (cells[1:] if pending else cells[1:-1])
+
+    def _spend(self, cost=1):
+        self._ops += cost
+        if self._ops > self._budget:
+            raise _BudgetExceeded
+
+    def _final_body(self, cells, steps, pending):
+        """Corps (tête d'abord) après avoir suivi `steps` et mangé la pomme au dernier pas."""
+        full = steps[::-1] + cells
+        return full[:len(full) - (len(steps) - pending)]
+
+    def _valid_certificate(self, path, region, head, tail):
+        """Exactement les cases de la région, une fois chacune, pas entre voisines, raccordé tête et queue."""
+        if len(path) != len(region):
+            return False
+        if not path:
+            return True
+        if set(path) != region or path[0] not in self.nbset[head] or path[-1] not in self.nbset[tail]:
+            return False
+        return all(b in self.nbset[a] for a, b in zip(path, path[1:]))
+
+    # --- décision à chaque coup ---
 
     def choose(self, body, pending, apple):
         """Retourne la direction (dx, dy) à donner au serpent."""
-        n, idx, cyc, nbrs = self.n, self.idx, self.cyc, self.nbrs
-        h = self.cell(body[0])
-        ih = idx[h]
-        tail_rel = n if len(body) == 1 else (idx[self.cell(body[-1])] - ih) % n
-        free_ahead = tail_rel - 1                 # cases rel 1..tail_rel-1 : toutes vides
-        if self.plan is not None:                 # plan de la couche 5 en cours d'exécution
-            step = self._follow_plan(body, pending)
-            if step is not None:
-                return step
-        if (self.dynamic and apple is not None and apple != self.last_apple
-                and len(body) / n >= self.dyn_fill):
-            self.last_apple = apple               # nouvelle pomme : on tente de réorganiser le cycle
-            self._reorganize(ih, free_ahead, h, self.cell(body[-1]), self.cell(apple))
-        p = 1 if pending else 0                   # croissance en attente
-        limit_free = free_ahead - p - self.margin
-        limit_apple = limit_free - self.growth    # manger ajoute une croissance en attente
-        if not self.l3:
-            limit_free = limit_apple = 0
-        apple_cell = self.cell(apple) if apple else None
-        apple_rel = (idx[apple_cell] - ih) % n if apple else None
+        p = 1 if pending else 0
+        cells = [self.cell(b) for b in body]
+        apple_cell = self.cell(apple)
 
-        if self.libre and apple is not None and apple != self.last_plan_apple:
-            self.last_plan_apple = apple          # nouvelle pomme : on cherche un plan de raccourci
-            if self._make_plan(body, p, h, ih, free_ahead, apple_cell, apple_rel, limit_apple):
-                step = self._follow_plan(body, pending)
-                if step is not None:
-                    return step
+        if self.plan is None:
+            if self.debug:
+                self._check_certificate(cells)
+            self.since_try += 1
+            self.apple_moves += 1
+            if apple != self.last_apple:
+                self.apple_moves = 0
+            if self.apple_moves <= self.STEP_LIMIT and (apple != self.last_apple or self.since_try >= self.RETRY_EVERY):
+                self.since_try = 0
+                self.last_apple = apple
+                self._plan(cells, p, apple_cell)
+            self.last_apple = apple
+            if self.plan is None and self.apple_moves <= self.STEP_LIMIT:
+                self._short_plans(cells, p, apple_cell)  # crée éventuellement un plan de 1 à STEP_MAX pas
 
-        target = None
-        if apple_rel is not None and 1 <= apple_rel <= limit_apple:
-            target = self._first_step(h, ih, apple_rel)[0]
-        if target is None:
-            # pomme trop loin / trop risquée : voisin autorisé au plus grand rel, sinon case suivante du cycle
-            best_rel = 0
-            for v in nbrs[h]:
-                r = (idx[v] - ih) % n
-                if 1 <= r <= limit_free and v != apple_cell and r > best_rel:
-                    target, best_rel = v, r
-        if target is None:
-            target = cyc[(ih + 1) % n]
+        if self.plan is not None:
+            step = self.plan["steps"][self.plan["i"]]
+            if not self._is_legal(step, cells, p):
+                self.plan = None  # ne doit jamais arriver : on abandonne le plan
+                self._note("plan abandonné : pas illégal")
+            else:
+                self.plan["i"] += 1
+                if self.plan["i"] == len(self.plan["steps"]):
+                    self.path = deque(self.plan["path"])  # état final atteint : son certificat devient le courant
+                    self.plan = None
+                return self._direction(body[0], step)
 
-        if not self._is_ok(target, body, p, apple_cell):
-            # filet de sécurité (ne doit jamais arriver si l'invariant tient) : coup illégal ou
-            # après lequel plus aucun coup ne serait légal (cases vides « trous » derrière la queue)
+        # sans raccourci : on suit le certificat (retirer la case franchie, ajouter la case quittée par la queue)
+        target = self.path[0] if self.path else None
+        if target is None or not self._is_legal(target, cells, p):
             self.fallbacks += 1
-            if self.debug and len(self.violations) < 5:
-                self.violations.append(f"coup refusé par le filet : len={len(body)} pending={p} "
-                                       f"free_ahead={free_ahead} rel_pomme={apple_rel} cible_rel={(idx[target] - ih) % n}")
-            alternatives = [v for v in nbrs[h] if self._is_ok(v, body, p, apple_cell)]
-            if alternatives:
-                target = max(alternatives, key=lambda v: (idx[v] - ih) % n)
+            self._note("certificat inutilisable : coup de secours")
+            legal = [v for v in self.nbrs[cells[0]] if self._is_legal(v, cells, p)]
+            return self._direction(body[0], legal[0] if legal else self.nbrs[cells[0]][0])
+        self.path.popleft()
+        if not p:
+            self.path.append(cells[-1])
         return self._direction(body[0], target)
 
-    def _is_ok(self, cell, body, pending, apple_cell):
-        """Le coup est légal ET laisse au moins un coup légal ensuite (ou gagne la partie)."""
-        if not self._is_legal(cell, body, pending):
-            return False
-        eaten = cell == apple_cell
-        new_body = [[cell % self.width, cell // self.width]] + (body if pending else body[:-1])
-        if eaten and len(new_body) == self.n:
-            return True  # dernière pomme : victoire
-        return any(self._is_legal(v, new_body, 1 if eaten else 0) for v in self.nbrs[cell])
+    def _note(self, message):
+        if self.debug and len(self.violations) < 5:
+            self.violations.append(message)
 
-    # --- COUCHE 4 : CYCLE DYNAMIQUE ---
+    def _check_certificate(self, cells):
+        """Mode debug : le certificat couvre exactement les cases libres, raccordé à la tête et à la queue."""
+        free = set(range(self.n)) - set(cells)
+        assert len(set(cells)) == len(cells), "collision"
+        assert self._valid_certificate(list(self.path), free, cells[0], cells[-1]), "certificat invalide"
 
-    def _reorganize(self, ih, free_ahead, head, tail, apple):
-        """Remplace la partie libre du cycle (cases rel 1..free_ahead, toutes vides) par un autre
-        chemin hamiltonien de ces cases qui place la pomme plus tôt. La partie fixe n'est jamais
-        touchée. Toute anomalie, échec de validation ou dépassement de budget : ancien cycle gardé."""
+    # --- COUCHES 3 à 5 : raccourcis prouvés et choisis par espace libre futur ---
+
+    def _plan(self, cells, p, apple_cell):
         t0 = time.perf_counter()
-        n, idx, cyc = self.n, self.idx, self.cyc
-        old_rel = (idx[apple] - ih) % n
-        if old_rel > free_ahead:
-            self.l4["hors_zone"] += 1  # pomme dans un trou de la partie fixe : intouchable
-            return
-        if free_ahead < 3 or old_rel <= 1:
-            return
-        free = {cyc[(ih + k) % n] for k in range(1, free_ahead + 1)}
-        self.l4["essais"] += 1
-        self._ops, self._budget = 0, self.dyn_budget
         try:
-            first = self._shortest(head, apple, free, 0)
-            if first is None or len(first) >= old_rel:
-                self.l4["sans_gain"] += 1
-                return  # pas de gain possible : les détours ne font qu'allonger le chemin
-            for order in range(4):  # 4 ordres de voisinage : 4 chemins candidats, le premier valide gagne
-                path = self._build_path(head, tail, apple, free, order)
-                if path is not None and (path.index(apple) + 1) < old_rel:
-                    for k, c in enumerate(path, start=1):
-                        cyc[(ih + k) % n] = c
-                    self._reindex()
-                    self.l4["acceptes"] += 1
-                    self.l4["gain"] += old_rel - (path.index(apple) + 1)
-                    return
-            self.l4["echec"] += 1  # aucun des 4 chemins candidats n'a passé la validation
-        except _BudgetExceeded:
-            self.l4["budget"] += 1
+            self._plan_inner(cells, p, apple_cell)
         finally:
-            self.l4["temps"] += time.perf_counter() - t0
+            self.stats["temps"] += time.perf_counter() - t0
 
-    # --- COUCHE 5 : PLAN DE RACCOURCI À TRAVERS LES CASES LIBRES ---
+    def _plan_inner(self, cells, p, apple_cell):
+        n = self.n
+        path = list(self.path)
+        if apple_cell not in path:
+            return
+        self.stats["pommes"] += 1
+        default_len = path.index(apple_cell) + 1
+        if default_len <= 1:
+            return  # pomme juste devant : rien à gagner
+        free = set(range(n)) - set(cells)
+        # référence : suivre le certificat jusqu'à la pomme
+        default_final = self._final_body(cells, path[:default_len], p)
+        default_future = self._future_distance(default_final)
+        if default_future is None:
+            return
+        best_score = default_len + self.FUTURE_WEIGHT * default_future
 
-    def _make_plan(self, body, p, h, ih, free_ahead, apple_cell, apple_rel, limit_apple):
-        """Cherche un chemin S de la tête à la pomme à travers n'importe quelles cases de la zone libre
-        (pas seulement en « rel » croissant), plus court que celui de la couche 3. Les cases sautées ne
-        deviennent PAS des trous : on reconstruit un cycle complet pour l'état final et on ne garde le plan
-        que si ce cycle passe la validation stricte. Sinon, rien n'est modifié."""
-        t0 = time.perf_counter()
-        n, idx, cyc = self.n, self.idx, self.cyc
-        if not 1 <= apple_rel <= free_ahead:
-            self.l5["hors_zone"] += 1  # pomme dans un trou de la partie fixe : intouchable
-            return False
-        self.l5["essais"] += 1
-        self._ops, self._budget = 0, self.plan_budget
-        try:
-            zone = {cyc[(ih + k) % n] for k in range(1, free_ahead + 1)}
-            baseline = self._first_step(h, ih, apple_rel)[1] if apple_rel <= limit_apple else INF
-            baseline = min(baseline, apple_rel)      # suivre le cycle atteint toujours la pomme en apple_rel coups
-            first = self._shortest(h, apple_cell, zone, 0)
-            if first is None or len(first) >= baseline:
-                self.l5["sans_gain"] += 1
-                return False
-            length = len(body)
-            for order in range(4):  # 4 chemins plus courts équivalents, le premier reconstructible gagne
-                steps = self._shortest(h, apple_cell, zone, order)
-                if steps is None or len(steps) >= baseline:
+        candidates = []
+        seen = set()
+        head_dir = self.DIRS.index(self._direction([cells[1] % self.width, cells[1] // self.width], cells[0])) \
+            if len(cells) > 1 else 3
+        free_degree = {c: sum(1 for v in self.nbrs[c] if v in free) for c in free}
+        for turn_w, hug_w, noise in self.VARIANTS:
+            steps = self._route(free, free_degree, cells[0], head_dir, apple_cell, turn_w, hug_w, noise)
+            if steps is None or len(steps) >= default_len or tuple(steps) in seen:
+                continue
+            seen.add(tuple(steps))
+            final = self._final_body(cells, steps, p)
+            future = self._future_distance(final)
+            if future is None:
+                continue  # cases libres coupées en plusieurs morceaux : aucun chemin hamiltonien possible
+            score = len(steps) + self.FUTURE_WEIGHT * future
+            if score < best_score:
+                candidates.append((score, steps, final))
+        candidates.sort(key=lambda c: c[0])
+
+        for score, steps, final in candidates[:self.MAX_TRIES]:
+            certificate = self._prove(cells, p, steps, final, path)
+            if certificate is not None:
+                self.plan = {"steps": steps, "i": 0, "path": certificate}
+                self.stats["raccourcis"] += 1
+                self.stats["gain"] += default_len - len(steps)
+                return
+        if candidates:
+            self.stats["echec"] += 1
+
+    def _short_plans(self, cells, p, apple_cell):
+        """Plans courts : on quitte le certificat pour 1 à STEP_MAX pas le long d'un plus court chemin réel vers
+        la pomme. La preuve (certificat de l'état obtenu) ne porte que sur la FIN du plan : les pas intermédiaires
+        n'ont pas besoin d'en avoir un. Un petit changement se prouve bien plus souvent qu'un trajet entier, et
+        un plan de plusieurs pas passe là où le pas isolé échoue. Recalculé à chaque fois qu'un plan se termine."""
+        path = list(self.path)
+        if apple_cell not in path:
+            return
+        default_len = path.index(apple_cell) + 1
+        if default_len <= 1:
+            return
+        free = set(range(self.n)) - set(cells)
+        free_degree = {c: sum(1 for v in self.nbrs[c] if v in free) for c in free}
+        head_dir = self.DIRS.index(self._direction([cells[1] % self.width, cells[1] // self.width], cells[0])) \
+            if len(cells) > 1 else 3
+        w = self.FUTURE_WEIGHT
+        references = {}   # k -> coût si on suit le certificat pendant k pas : longueur + espace libre laissé
+        candidates = {}   # préfixe (tuple) -> (score, longueur du chemin complet, état final)
+        for turn_w, hug_w, noise in self.VARIANTS[:self.STEP_VARIANTS]:
+            steps = self._route(free, free_degree, cells[0], head_dir, apple_cell, turn_w, hug_w, noise)
+            if steps is None or len(steps) >= default_len:
+                continue
+            for k in range(1, min(self.STEP_MAX, len(steps)) + 1):
+                prefix = tuple(steps[:k])
+                if prefix in candidates or list(prefix) == path[:k]:
+                    continue  # déjà vu, ou identique au suivi du certificat : rien à gagner
+                if k not in references:
+                    ref_future = self._future_distance(self._final_body(cells, path[:k], p))
+                    references[k] = default_len + w * (ref_future if ref_future is not None else 0.0)
+                final = self._final_body(cells, list(prefix), p)
+                future = self._future_distance(final)
+                if future is None:
+                    continue  # cases libres coupées en plusieurs morceaux : aucun certificat possible
+                score = len(steps) + w * future
+                if score < references[k]:
+                    candidates[prefix] = (score, len(steps), final)
+        ranked = sorted(candidates.items(),
+                        key=lambda item: (len(item[0]) if self.SHORT_FIRST else 0, item[1][0], -len(item[0])))
+        for prefix, (score, length, final) in ranked[:self.STEP_TRIES]:
+            certificate = self._prove(cells, p, list(prefix), final, path)
+            if certificate is not None:
+                self.plan = {"steps": list(prefix), "i": 0, "path": certificate}
+                self.apple_moves += len(prefix) - 1
+                self.stats["pas"] += 1
+                self.stats["pas_" + str(len(prefix))] += 1
+                return
+
+    def _route(self, free, free_degree, head, head_dir, goal, turn_w, hug_w, noise):
+        """Dijkstra sur des états (case, direction) à travers les cases libres : coût 1 par pas, plus un
+        petit poids par virage, par nombre de voisines libres (contact avec le corps), plus du bruit."""
+        rng = self.rng
+        start = (head, head_dir)
+        best = {start: 0.0}
+        parent = {}
+        heap = [(0.0, 0, head, head_dir)]
+        counter = 0
+        while heap:
+            cost, _, c, d = heapq.heappop(heap)
+            if best.get((c, d), 1e18) < cost:
+                continue
+            if c == goal:
+                steps, state = [], (c, d)
+                while state != start:
+                    steps.append(state[0])
+                    state = parent[state]
+                steps.reverse()
+                return steps if len(set(steps)) == len(steps) else None
+            for nd in range(4):
+                if nd == d ^ 1:
                     continue
-                new_cyc = self._rebuild(body, p, steps, ih, length)
-                if new_cyc is not None:
-                    self.plan = {"steps": steps, "i": 0, "cyc": new_cyc}
-                    self.l5["acceptes"] += 1
-                    self.l5["gain"] += baseline - len(steps)
-                    return True
-            self.l5["echec"] += 1
-        except _BudgetExceeded:
-            self.l5["budget"] += 1
-        finally:
-            self.l5["temps"] += time.perf_counter() - t0
-        return False
+                v = self.step_to[c][nd]
+                if v not in free:
+                    continue
+                step = 1.0 + (turn_w if nd != d else 0.0) + hug_w * free_degree[v] \
+                    + (noise * rng.random() if noise else 0.0)
+                new_cost = cost + step
+                key = (v, nd)
+                if new_cost < best.get(key, 1e18):
+                    best[key] = new_cost
+                    parent[key] = (c, d)
+                    counter += 1
+                    heapq.heappush(heap, (new_cost, counter, v, nd))
+        return None
 
-    def _rebuild(self, body, p, steps, ih, length):
-        """Cycle de l'état final (après avoir suivi `steps` et mangé la pomme) ou None.
-        L'état final : corps = steps (tête en dernier) + corps actuel privé des `m - p` cases de queue
-        qui auront quitté leur place. Cycle final = [partie fixe restante] [tête] steps [chemin libre P'].
-        P' recouvre toutes les cases entre la tête actuelle et la nouvelle queue, sauf celles de steps :
-        on recolle les tronçons restants (dans les deux sens) par une recherche en profondeur."""
-        n, idx, cyc = self.n, self.idx, self.cyc
-        m = len(steps)
-        pops = m - p
-        if pops > length - 1:
-            return None  # toute la queue actuelle partirait : cas non traité
-        new_tail = self.cell(body[length - 1 - pops])
-        tail_rel = (idx[new_tail] - ih) % n
-        span = tail_rel - 1                          # cases de rel 1..tail_rel-1 : steps + P'
-        if span - m < 1 + self.margin:
-            return None                              # trop peu de cases libres après le plan : prudence
-        segment = [cyc[(ih + j) % n] for j in range(1, span + 1)]
+    def _future_distance(self, final):
+        """Distance moyenne (en pas) de la tête aux cases libres restantes, ou None si elles ne sont pas
+        toutes atteignables d'un seul tenant. C'est le coût attendu de la pomme suivante."""
+        occupied = set(final)
+        remaining = self.n - len(occupied)
+        if remaining == 0:
+            return 0.0
+        queue = [v for v in self.nbrs[final[0]] if v not in occupied]
+        dist = {v: 1 for v in queue}
+        for c in queue:
+            for v in self.nbrs[c]:
+                if v not in occupied and v not in dist:
+                    dist[v] = dist[c] + 1
+                    queue.append(v)
+        if len(dist) != remaining:
+            return None
+        return sum(dist.values()) / remaining
+
+    # --- COUCHE 4 : preuve (certificat de l'état final) ---
+
+    def _prove(self, cells, p, steps, final, path):
+        """Certificat de l'état final ou None. D'abord recoller les tronçons de l'ancien certificat, puis
+        le solveur hamiltonien. Toujours revalidé strictement."""
+        region = set(range(self.n)) - set(final)
+        if not region:
+            return []
+        head, tail = final[0], final[-1]
+        starts, ends = self.nbset[head] & region, self.nbset[tail] & region
+        if not starts or not ends or not self._degrees_possible(region, starts, ends):
+            return None
+        pops = len(steps) - p
+        guide = None
+        if pops <= len(cells) - 1:
+            extended = path + [cells[len(cells) - 1 - i] for i in range(pops)]
+            guide = {c: i for i, c in enumerate(extended)}  # ordre de l'ancien certificat, guide du solveur
+            self._ops, self._budget = 0, self.RELINK_NODES
+            try:
+                certificate = self._relink_old(cells, steps, pops, path, head, tail)
+            except _BudgetExceeded:
+                certificate = None
+            if certificate is not None and self._valid_certificate(certificate, region, head, tail):
+                self.stats["recollage"] += 1
+                return certificate
+        self._ops, self._budget = 0, self.SOLVER_NODES
+        try:
+            certificate = self._ham_path(region, starts, ends, guide)
+        except _BudgetExceeded:
+            certificate = None
+        if certificate is not None and self._valid_certificate(certificate, region, head, tail):
+            self.stats["solveur"] += 1
+            return certificate
+        return None
+
+    def _degrees_possible(self, region, starts, ends):
+        """Nécessaire : une case à 0 voisine libre est impossible ; une case à 1 voisine libre est une
+        extrémité du chemin, donc voisine de la tête (départ) ou de la queue (arrivée) ; au plus 2 extrémités."""
+        dead = 0
+        for c in region:
+            d = len(self.nbset[c] & region)
+            if d == 0 and len(region) > 1:
+                return False
+            if d <= 1:
+                dead += 1
+                if c not in starts and c not in ends:
+                    return False
+        return dead <= 2 or len(region) <= 2
+
+    def _relink_old(self, cells, steps, pops, path, head, tail):
+        """Ancien certificat prolongé des cases quittées par la queue, privé du raccourci : tronçons recollés."""
+        extended = path + [cells[len(cells) - 1 - i] for i in range(pops)]
         taken = set(steps)
         chains, current = [], []
-        for c in segment:
+        for c in extended:
             if c in taken:
                 if current:
                     chains.append(current)
@@ -344,356 +488,169 @@ class CycleBot:
                 current.append(c)
         if current:
             chains.append(current)
-        order = self._relink(chains, steps[-1], new_tail)
-        if order is None:
-            return None
-        free_path = []
-        for i, reverse in order:
-            free_path += chains[i][::-1] if reverse else chains[i]
-        new_cyc = list(cyc)
-        for j, c in enumerate(steps + free_path):
-            new_cyc[(ih + 1 + j) % n] = c
-        return new_cyc if self._state_ok(new_cyc, body, steps, pops, length) else None
-
-    def _relink(self, chains, head_new, tail_new):
-        """Ordre et sens des tronçons formant un chemin de voisin de head_new à voisin de tail_new."""
-        r = len(chains)
         starts = {}
-        for i, c in enumerate(chains):
-            starts.setdefault(c[0], []).append((i, False))
-            if len(c) > 1:
-                starts.setdefault(c[-1], []).append((i, True))
-        used = [False] * r
+        for i, chain in enumerate(chains):
+            starts.setdefault(chain[0], []).append((i, False))
+            if len(chain) > 1:
+                starts.setdefault(chain[-1], []).append((i, True))
+        used = [False] * len(chains)
         order = []
 
-        def dfs(current, done):
+        def dfs(current_cell, done):
             self._spend()
-            if done == r:
-                return tail_new in self.nbset[current]
-            for v in self.nbrs[current]:
+            if done == len(chains):
+                return tail in self.nbset[current_cell]
+            for v in self.nbrs[current_cell]:
                 for i, reverse in starts.get(v, ()):
                     if not used[i]:
                         used[i] = True
                         order.append((i, reverse))
-                        c = chains[i]
-                        if dfs(c[0] if reverse else c[-1], done + 1):
+                        chain = chains[i]
+                        if dfs(chain[0] if reverse else chain[-1], done + 1):
                             return True
                         order.pop()
                         used[i] = False
             return False
 
-        return list(order) if dfs(head_new, 0) else None
-
-    def _state_ok(self, new_cyc, body, steps, pops, length):
-        """Validation stricte de l'état final : cycle hamiltonien valide (toutes les cases une fois, cases
-        consécutives voisines, dernière -> première) et corps rangé dans l'ordre du cycle."""
-        n, nbset = self.n, self.nbset
-        if len(set(new_cyc)) != n or any(new_cyc[(i + 1) % n] not in nbset[c] for i, c in enumerate(new_cyc)):
-            return False
-        pos = [0] * n
-        for i, c in enumerate(new_cyc):
-            pos[c] = i
-        final_body = steps[::-1] + [self.cell(b) for b in body[:length - pops]]  # tête d'abord
-        ih = pos[final_body[0]]
-        rels = [(pos[c] - ih) % n for c in final_body]
-        return len(set(final_body)) == len(final_body) and all(rels[i] > rels[i + 1] for i in range(1, len(rels) - 1))
-
-    def _follow_plan(self, body, pending):
-        """Prochain pas du plan (vérifié légal dans le vrai jeu) ; au dernier pas, le nouveau cycle est installé."""
-        plan = self.plan
-        target = plan["steps"][plan["i"]]
-        if not self._is_legal(target, body, 1 if pending else 0):
-            self.plan = None
-            self.l5["abandons"] += 1
-            if self.debug and len(self.violations) < 5:
-                self.violations.append("plan abandonné : pas illégal")
+        if not dfs(head, 0):
             return None
-        plan["i"] += 1
-        if plan["i"] == len(plan["steps"]):
-            self.cyc = plan["cyc"]
-            self._reindex()
-            self.plan = None
-        return self._direction(body[0], target)
+        result = []
+        for i, reverse in order:
+            result += chains[i][::-1] if reverse else chains[i]
+        return result
 
-    def _spend(self, cost=1):
-        self._ops += cost
-        if self._ops > self._budget:
-            raise _BudgetExceeded
-
-    def _shortest(self, start, goal, allowed, order):
-        """BFS (plus court chemin) de start (exclu) à goal (inclus) sur des cases de `allowed`."""
-        parent = {start: None}
-        queue = [start]
-        for c in queue:
-            self._spend()
-            if c == goal:
-                break
-            nb = self.nbrs[c]
-            for v in nb[order % len(nb):] + nb[:order % len(nb)]:
-                if v not in parent and v in allowed:
-                    parent[v] = c
-                    queue.append(v)
-        if goal not in parent:
-            return None
-        path = []
-        while goal != start:
-            path.append(goal)
-            goal = parent[goal]
-        return path[::-1]
-
-    def _extend(self, apple, tail, free, used, need_parity, order):
-        """Suite du chemin : de la pomme jusqu'à une case libre voisine de la queue, sans réutiliser
-        de case, avec un nombre de cases de parité `need_parity` (les détours ajoutent 2 cases à la fois).
-        BFS sur (case, parité). Retourne la liste de cases (éventuellement vide) ou None."""
-        tail_adjacent = self.nbset[tail] & free
-        if need_parity == 0 and apple in tail_adjacent:
-            return []
-        parent = {}
-        queue = []
-        for v in self.nbrs[apple]:
-            if v in free and v not in used:
-                parent[(v, 1)] = None
-                queue.append((v, 1))
-        for state in queue:
-            self._spend()
-            c, par = state
-            if par == need_parity and c in tail_adjacent:
-                path = []
-                while state is not None:
-                    path.append(state[0])
-                    state = parent[state]
-                return path[::-1] if len(set(path)) == len(path) else None  # cases répétées : abandon
-            nb = self.nbrs[c]
-            for v in nb[order % len(nb):] + nb[:order % len(nb)]:
-                nxt = (v, par ^ 1)
-                if nxt not in parent and v in free and v not in used:
-                    parent[nxt] = state
-                    queue.append(nxt)
+    def _ham_path(self, region, start_cells, end_cells, guide=None):
+        """Chemin hamiltonien de `region` d'une case de start_cells à une case de end_cells, ou None.
+        Plusieurs recherches courtes plutôt qu'une seule qui s'enlise : d'abord guidée par l'ancien certificat
+        (on le suit tant que c'est possible), puis Warnsdorff, puis Warnsdorff au départage aléatoire.
+        Une recherche qui se termine sans solution prouve l'impossibilité."""
+        adj = {c: [v for v in self.nbrs[c] if v in region] for c in region}
+        per_try = max(50, self._budget // self.RESTARTS)
+        modes = (["guide"] if guide else []) + ["warnsdorff"] + ["random"] * self.RESTARTS
+        for mode in modes[:self.RESTARTS]:
+            outcome = self._ham_attempt(region, adj, start_cells, set(end_cells), per_try, mode, guide)
+            if outcome is False:
+                return None      # exploration complète : pas de chemin
+            if outcome is not None:
+                return outcome
         return None
 
-    def _build_path(self, head, tail, apple, free, order):
-        """Chemin tête -> pomme -> queue, complété par des détours ; validé strictement."""
-        first = self._shortest(head, apple, free, order)
-        if first is None:
-            return None
-        need_parity = (len(free) - len(first)) % 2
-        rest = self._extend(apple, tail, free, set(first), need_parity, order)
-        if rest is None:
-            return None
-        seq = [head] + first + rest + [tail]  # les extrémités fixes permettent aussi des détours
-        uncovered = free - set(first) - set(rest)
-        if uncovered:
-            self._absorb(seq, uncovered, apple, after_apple=True)  # de préférence après la pomme
-        if uncovered:
-            self._absorb(seq, uncovered, apple, after_apple=False)
-        path = seq[1:-1]
-        return path if self._valid_path(path, free, head, tail) else None
+    def _ham_attempt(self, region, adj, start_cells, ends, limit, mode, guide):
+        """Une recherche en profondeur, voisin de plus petit degré d'abord (Warnsdorff). Élagage : case isolée,
+        plus d'une extrémité forcée, extrémité forcée qui n'est pas une case d'arrivée, cases restantes coupées
+        en plusieurs morceaux. Retourne le chemin, False (aucun chemin) ou None (budget épuisé)."""
+        k = len(region)
+        if k == 1:
+            c = next(iter(region))
+            return [c] if c in start_cells and c in ends else False
+        rng = self.rng
+        deg = {c: len(adj[c]) for c in region}
+        visited, path = set(), []
+        counters = {"low0": 0, "low1": 0, "bad1": 0, "ends_left": len(ends), "nodes": 0}
 
-    def _absorb(self, seq, uncovered, apple, after_apple):
-        """Détours : x -> y devient x -> x' -> y' -> y quand x' et y' sont libres, non couvertes,
-        et forment un carré avec x et y. Modifie seq et uncovered en place."""
-        nbrs, nbset = self.nbrs, self.nbset
-        changed = True
-        while uncovered and changed:
-            changed = False
-            pa = seq.index(apple)
-            positions = range(len(seq) - 2, pa - 1, -1) if after_apple else range(pa - 1, -1, -1)
-            for i in positions:  # ordre décroissant : une insertion ne décale pas les positions restantes
-                self._spend()
-                x, y = seq[i], seq[i + 1]
-                done = False
-                for xp in nbrs[x]:
-                    if xp in uncovered:
-                        for yp in nbrs[y]:
-                            if yp != xp and yp in uncovered and yp in nbset[xp]:
-                                seq[i + 1:i + 1] = [xp, yp]
-                                uncovered.discard(xp)
-                                uncovered.discard(yp)
-                                changed = done = True
-                                break
-                    if done:
-                        break
-                if not uncovered:
-                    return
+        def classify(c, sign):
+            d = deg[c]
+            if d == 0:
+                counters["low0"] += sign
+            elif d == 1:
+                counters["low1"] += sign
+                if c not in ends:
+                    counters["bad1"] += sign
 
-    def _valid_path(self, path, free, head, tail):
-        """Exactement les cases libres, une fois chacune, pas entre voisines, raccordé à la tête et à la queue."""
-        if len(path) != len(free) or set(path) != free:
+        for c in region:
+            classify(c, +1)
+
+        def visit(c):
+            classify(c, -1)
+            visited.add(c)
+            path.append(c)
+            if c in ends:
+                counters["ends_left"] -= 1
+            for v in adj[c]:
+                if v not in visited:
+                    classify(v, -1)
+                    deg[v] -= 1
+                    classify(v, +1)
+
+        def unvisit(c):
+            for v in adj[c]:
+                if v not in visited:
+                    classify(v, -1)
+                    deg[v] += 1
+                    classify(v, +1)
+            visited.discard(c)
+            path.pop()
+            if c in ends:
+                counters["ends_left"] += 1
+            classify(c, +1)
+
+        def feasible(c):
+            remaining = k - len(path)
+            if remaining == 0:
+                return c in ends
+            if counters["ends_left"] == 0:
+                return False
+            near0 = near1 = near_bad1 = 0
+            frontier = []
+            for u in adj[c]:
+                if u not in visited:
+                    frontier.append(u)
+                    if deg[u] == 0:
+                        near0 += 1
+                    elif deg[u] == 1:
+                        near1 += 1
+                        if u not in ends:
+                            near_bad1 += 1
+            if near0:
+                return remaining == 1  # case reliée seulement à c : doit être la dernière
+            if counters["low0"] or not frontier:
+                return False
+            if counters["low1"] - near1 > 1 or counters["bad1"] - near_bad1 != 0:
+                return False
+            seen = set(frontier)  # les cases restantes doivent rester d'un seul tenant
+            stack = list(frontier)
+            while stack:
+                x = stack.pop()
+                for v in adj[x]:
+                    if v not in visited and v not in seen:
+                        seen.add(v)
+                        stack.append(v)
+            return len(seen) == remaining
+
+        def dfs(c):
+            counters["nodes"] += 1
+            if counters["nodes"] > limit:
+                raise _BudgetExceeded
+            if not feasible(c):
+                return False
+            if len(path) == k:
+                return True
+            nxt = [u for u in adj[c] if u not in visited]
+            if mode == "guide":
+                successor = guide[c] + 1
+                nxt.sort(key=lambda u: (guide[u] != successor, deg[u]))
+            elif mode == "random":
+                nxt.sort(key=lambda u: (deg[u], u in ends, rng.random()))
+            else:
+                nxt.sort(key=lambda u: (deg[u], u in ends))
+            for u in nxt:
+                visit(u)
+                if dfs(u):
+                    return True
+                unvisit(u)
             return False
-        if path[0] not in self.nbset[head] or path[-1] not in self.nbset[tail]:
-            return False
-        return all(b in self.nbset[a] for a, b in zip(path, path[1:]))
 
-    def _first_step(self, h, ih, apple_rel):
-        """Plus court chemin tête -> pomme dans le graphe « rel croissant » (DP à rebours).
-        Retourne (premier pas, longueur). À longueur égale, le nombre total de cases sautées est le
-        même ; on départage par le nombre de sauts (moins de trous éparpillés), puis par le plus petit rel."""
-        n, idx, cyc, nbrs = self.n, self.idx, self.cyc, self.nbrs
-        weigh = 1 if self.tie_holes else 0
-        dist = [INF] * (apple_rel + 1)
-        jumps = [0] * (apple_rel + 1)
-        dist[apple_rel] = 0
-        for k in range(apple_rel - 1, 0, -1):
-            best = (INF, 0)
-            for v in nbrs[cyc[(ih + k) % n]]:
-                r = (idx[v] - ih) % n
-                if k < r <= apple_rel and dist[r] < INF:
-                    cand = (dist[r], jumps[r] + (weigh if r - k > 1 else 0))
-                    if cand < best:
-                        best = cand
-            if best[0] < INF:
-                dist[k], jumps[k] = best[0] + 1, best[1]
-        target, key, steps = None, (INF, INF, INF), INF
-        for v in nbrs[h]:
-            r = (idx[v] - ih) % n
-            if 1 <= r <= apple_rel and dist[r] < INF:
-                cand = (dist[r], jumps[r] + (weigh if r > 1 else 0), r)
-                if cand < key:
-                    target, key, steps = v, cand, dist[r] + 1
-        return target, steps
-
-    def _is_legal(self, cell, body, pending):
-        """Vraie règle du jeu : la case ne doit pas être dans le corps une fois la queue retirée."""
-        occupied = body[:-1] if not pending else body
-        return all(self.cell(p) != cell for p in occupied[1:]) if len(body) > 1 else True
-
-    def _direction(self, head, cell):
-        dx, dy = cell % self.width - head[0], cell // self.width - head[1]
-        if self.wrap:
-            if dx in (self.width - 1, -(self.width - 1)):
-                dx = -1 if dx > 0 else 1
-            if dy in (self.height - 1, -(self.height - 1)):
-                dy = -1 if dy > 0 else 1
-        return (dx, dy)
-
-
-class DirectBot(CycleBot):
-    """Mode risqué (--direct) : plus court chemin RÉEL vers la pomme à travers toutes les cases libres du
-    tore, sans la contrainte du cycle hamiltonien. Aucune garantie de victoire : le cycle n'est plus
-    respecté. Sécurité réglable : 0 = aucune, 1 = après avoir mangé, la tête doit encore pouvoir
-    rejoindre la queue. Si aucun chemin sûr n'existe, on se met en sécurité (espace libre maximal) ;
-    après `stall` x N coups sans pomme, on prend le chemin même s'il est jugé dangereux."""
-
-    DIRS = ((0, -1), (0, 1), (-1, 0), (1, 0))  # haut, bas, gauche, droite : l'inverse de d est d ^ 1
-
-    def __init__(self, *args, safety=1, stall=3, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.safety = safety
-        self.stall = stall * self.n
-        self.since_apple = 0
-        self.seen_apple = None
-        self.step_to = [[self._wrap_step(c, d) for d in range(4)] for c in range(self.n)]
-        self.risky = 0  # coups pris malgré un chemin jugé dangereux
-
-    def _wrap_step(self, c, d):
-        dx, dy = self.DIRS[d]
-        return (c % self.width + dx) % self.width + ((c // self.width + dy) % self.height) * self.width
-
-    def check_invariant(self, body):
-        pass  # pas de cycle à vérifier dans ce mode
-
-    def choose(self, body, pending, apple):
-        p = 1 if pending else 0
-        cells = [self.cell(b) for b in body]
-        head, apple_cell = cells[0], self.cell(apple)
-        if apple != self.seen_apple:
-            self.seen_apple, self.since_apple = apple, 0
-        self.since_apple += 1
-
-        path = self._path(cells, p, apple_cell, body)
-        if path is not None:
-            if self.safety == 0 or self._safe_after(cells, path, p):
-                return self._direction(body[0], path[0])
-            if self.since_apple > self.stall:
-                self.risky += 1
-                return self._direction(body[0], path[0])
-        return self._direction(body[0], self._safest_move(cells, p, apple_cell))
-
-    def _path(self, cells, p, apple_cell, body):
-        """Plus court chemin (en coups, puis en virages : trajet droit et cohérent) de la tête à la pomme.
-        Une case du corps est utilisable dès que la queue l'aura quittée (coup d + 1 + p, d = rang depuis la queue)."""
-        length = len(cells)
-        free_time = {c: (length - 1 - i) + 1 + p for i, c in enumerate(cells)}
-        head = cells[0]
-        d0 = self.DIRS.index(self._direction(body[1], head)) if length > 1 else 3
-        start = (head, d0)
-        best = {start: (0, 0)}
-        parent = {}
-        heap = [(0, 0, 0, head, d0)]
-        counter = 0
-        while heap:
-            steps, turns, _, c, d = heapq.heappop(heap)
-            if best.get((c, d)) != (steps, turns):
-                continue
-            if c == apple_cell:
-                path, state = [], (c, d)
-                while state != start:
-                    path.append(state[0])
-                    state = parent[state]
-                path.reverse()
-                return path if len(set(path)) == len(path) else None
-            for nd in range(4):
-                if nd == d ^ 1:
-                    continue
-                v = self.step_to[c][nd]
-                if free_time.get(v, 0) > steps + 1:
-                    continue
-                key, cost = (v, nd), (steps + 1, turns + (nd != d))
-                if key not in best or cost < best[key]:
-                    best[key] = cost
-                    parent[key] = (c, d)
-                    counter += 1
-                    heapq.heappush(heap, (cost[0], cost[1], counter, v, nd))
-        return None
-
-    def _final_body(self, cells, path, p):
-        full = path[::-1] + cells
-        return full[:len(full) - (len(path) - p)]
-
-    def _safe_after(self, cells, path, p):
-        final = self._final_body(cells, path, p)
-        if len(final) == self.n:
-            return True  # dernière pomme : victoire
-        return self._tail_reachable(final, 1)[0]
-
-    def _tail_reachable(self, final, pending):
-        """(la tête peut rejoindre la queue par des cases libres, taille de l'espace libre atteint)."""
-        occupied = set(final)
-        head, tail = final[0], final[-1]
-        queue = [v for v in self.nbrs[head] if v not in occupied]
-        seen = set(queue)
-        ok = pending == 0 and tail in self.nbset[head]
-        near_tail = self.nbset[tail]
-        for c in queue:
-            if c in near_tail:
-                ok = True
-            for v in self.nbrs[c]:
-                if v not in occupied and v not in seen:
-                    seen.add(v)
-                    queue.append(v)
-        return ok, len(seen)
-
-    def _distance(self, a, b):
-        dx = abs(a % self.width - b % self.width)
-        dy = abs(a // self.width - b // self.width)
-        return min(dx, self.width - dx) + min(dy, self.height - dy)
-
-    def _safest_move(self, cells, p, apple_cell):
-        """Repli : coup légal qui garde la queue accessible, avec le plus d'espace libre, puis le plus près de la pomme."""
-        best, best_key = None, None
-        for v in self.nbrs[cells[0]]:
-            occupied = cells if p else cells[:-1]
-            if v in occupied[1:]:
-                continue
-            final = ([v] + cells) if p else ([v] + cells[:-1])
-            eaten = v == apple_cell
-            ok, area = self._tail_reachable(final, 1 if eaten else 0)
-            key = (ok, area, -self._distance(v, apple_cell))
-            if best_key is None or key > best_key:
-                best, best_key = v, key
-        if best is None:  # aucun coup légal : la partie est perdue quoi qu'on fasse
-            best = self.nbrs[cells[0]][0]
-        return best
+        try:
+            starts_order = sorted((c for c in start_cells if c in region),
+                                  key=(lambda c: guide[c]) if mode == "guide" else (lambda c: (deg[c], rng.random())))
+            for s0 in starts_order:
+                visit(s0)
+                if dfs(s0):
+                    return list(path)
+                unvisit(s0)
+        except _BudgetExceeded:
+            return None
+        return False
 
 
 # --- BRANCHEMENT SUR LE VRAI JEU ---
@@ -717,11 +674,11 @@ class Run:
 
 
 def install_bot(game, args, results):
-    """Remplace Snake et Apple du jeu par des sous-classes pilotées par le bot, et l'horloge
-    par une horloge qui règle la vitesse et met fin à la partie (mode --headless)."""
+    """Remplace Snake et Apple du jeu par des sous-classes pilotées par le bot, et l'horloge par une
+    horloge qui règle la vitesse et met fin à la partie (mode --headless)."""
     import pygame
     run = Run()
-    cap = 10 * game.GRID_SIZE ** 2 * game.GRID_SIZE ** 2  # limite de coups : détecte une boucle infinie
+    cap = 10 * game.GRID_SIZE ** 4  # limite de coups : détecte une boucle infinie
     real_clock = pygame.time.Clock
 
     class BotSnake(game.Snake):
@@ -730,35 +687,20 @@ def install_bot(game, args, results):
             run.snake, run.victory, run.reported = self, False, False
             self.moves = 0
             self.think = 0.0  # temps de calcul du bot
-            options = dict(wrap=True, growth=1, margin=args.margin, debug=args.debug, dynamic=args.dynamic,
-                           dyn_fill=args.dyn_fill, dyn_budget=args.dyn_budget, tie_holes=args.tie_holes,
-                           libre=args.libre, plan_budget=args.plan_budget, l3=args.l3)
-            if args.direct:
-                self.bot = DirectBot(game.GRID_SIZE, game.GRID_SIZE, self.body, safety=args.safety,
-                                     stall=args.stall, **options)
-            else:
-                self.bot = CycleBot(game.GRID_SIZE, game.GRID_SIZE, self.body, **options)
-
-        def _debug_check(self):
-            if self.bot.plan is not None:
-                return  # en plein plan de la couche 5 : le cycle n'est valide qu'à l'état final du plan
-            try:
-                self.bot.check_invariant(self.body)
-            except AssertionError as error:  # consigné, la partie continue
-                if len(self.bot.violations) < 5:
-                    self.bot.violations.append(f"coup {self.moves} : {error}")
+            self.bot = SnakeBot(game.GRID_SIZE, game.GRID_SIZE, self.body, wrap=True, debug=args.debug)
 
         def move(self):
-            if args.debug:
-                self._debug_check()
             t0 = time.perf_counter()
-            direction = self.bot.choose(self.body, self.grow_pending, run.apple.position)
+            try:
+                direction = self.bot.choose(self.body, self.grow_pending, run.apple.position)
+            except AssertionError as error:  # mode debug : consigné, la partie continue
+                self.bot._note(f"coup {self.moves} : {error}")
+                self.bot.path = deque()
+                direction = self.direction
             self.think += time.perf_counter() - t0
             self.set_direction(direction)
             super().move()
             self.moves += 1
-            if args.debug and not self.is_game_over():
-                self._debug_check()
 
     class BotApple(game.Apple):
         def __init__(self, snake_body):
@@ -783,10 +725,9 @@ def install_bot(game, args, results):
                     outcome = "boucle"
                 if outcome:
                     run.reported = True
-                    results.append({"issue": outcome, "score": s.score, "coups": s.moves,
-                                    "longueur": len(s.body), "replis": s.bot.fallbacks,
-                                    "violations": list(s.bot.violations), "calcul": s.think, "l4": dict(s.bot.l4),
-                                    "l5": dict(s.bot.l5)})
+                    results.append({"issue": outcome, "score": s.score, "coups": s.moves, "longueur": len(s.body),
+                                    "replis": s.bot.fallbacks, "violations": list(s.bot.violations),
+                                    "calcul": s.think, "stats": dict(s.bot.stats)})
                     if not args.headless:
                         print(f"{outcome.upper()} : score {s.score}, {s.moves} coups, longueur {len(s.body)}")
                     if args.headless:
@@ -823,49 +764,30 @@ def summarize(results, elapsed):
     wins = sum(r["issue"] == "victoire" for r in results)
     print(f"\n{n} parties du vrai jeu en {elapsed:.1f}s : {wins} victoires ({100 * wins / n:.1f} %), "
           f"{sum(r['issue'] == 'mort' for r in results)} morts, {sum(r['issue'] == 'boucle' for r in results)} boucles, "
-          f"{sum(r['replis'] for r in results)} replis de sécurité")
+          f"{sum(r['replis'] for r in results)} coups de secours")
     scores = [r["score"] for r in results]
     coups = [r["coups"] for r in results]
     print(f"score  : min {min(scores)}, moyenne {sum(scores) / n:.1f}, max {max(scores)}")
     print(f"coups  : min {min(coups)}, moyenne {sum(coups) / n:.0f}, max {max(coups)}")
     print(f"coups par pomme (moyenne) : {sum(coups) / max(1, sum(scores)):.1f}")
     print(f"calcul du bot : {1000 * sum(r['calcul'] for r in results) / max(1, sum(coups)):.3f} ms par coup")
-    for nom, cle in (("couche 4", "l4"), ("couche 5", "l5")):
-        c = {k: sum(r[cle][k] for r in results) for k in results[0][cle]}
-        if c["essais"] or c["hors_zone"]:
-            print(f"{nom} : {c['acceptes']}/{c['essais']} plans acceptés, gain moyen "
-                  f"{c['gain'] / max(1, c['acceptes']):.1f}, {1000 * c['temps'] / max(1, c['essais']):.2f} ms par essai "
-                  f"(sans gain possible {c['sans_gain']}, échec {c['echec']}, budget dépassé {c['budget']}, "
-                  f"pomme hors zone libre {c['hors_zone']}" + (f", abandons {c['abandons']}" if cle == "l5" else "") + ")")
+    st = {k: sum(r["stats"][k] for r in results) for k in results[0]["stats"]}
+    print(f"raccourcis prouvés : {st['raccourcis']}/{st['pommes']} pommes (recollage {st['recollage']}, solveur "
+          f"{st['solveur']}, sans preuve {st['echec']}), plans courts prouvés {st['pas']} (1 pas : {st['pas_1']}, 2 : {st['pas_2']}, 3 : {st['pas_3']}, 4 : {st['pas_4']}), gain moyen {st['gain'] / max(1, st['raccourcis']):.1f} coups, "
+          f"{1000 * st['temps'] / max(1, st['pommes']):.1f} ms de planification par pomme")
     for i, r in enumerate(results):
         for message in r["violations"]:
             print(f"  [debug] partie {i} : {message}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bot hamiltonien + raccourcis sur le vrai jeu Snake.")
+    parser = argparse.ArgumentParser(description="Bot sans trou avec certificat hamiltonien sur le vrai jeu Snake.")
     parser.add_argument("--fps", type=int, default=30, help="images/s (5 = vitesse d'origine, 0 = illimité)")
-    parser.add_argument("--margin", type=int, default=2, help="marge de sécurité de la limite de raccourci")
     parser.add_argument("--headless", action="store_true", help="sans fenêtre, enchaîne --games parties puis résume")
     parser.add_argument("--games", type=int, default=1, help="nombre de parties (avec --headless)")
     parser.add_argument("--jobs", type=int, default=1, help="processus parallèles (avec --headless)")
     parser.add_argument("--seed", type=int, default=None, help="graine aléatoire de la première partie")
-    parser.add_argument("--debug", action="store_true", help="vérifie cycle et invariant à chaque coup")
-    parser.add_argument("--dynamic", action="store_true", help="active la couche 4 (cycle dynamique)")
-    parser.add_argument("--dyn-fill", type=float, default=0.0, help="taux de remplissage minimal (0 à 1) de la couche 4")
-    parser.add_argument("--dyn-budget", type=int, default=20000, help="budget d'opérations de la couche 4 par pomme")
-    parser.add_argument("--tie-holes", action=argparse.BooleanOptionalAction, default=True,
-                        help="départage les chemins de même longueur par le moins de sauts (trous)")
-    parser.add_argument("--l3", action=argparse.BooleanOptionalAction, default=True,
-                        help="raccourcis de la couche 3 (--no-l3 : la couche 3 suit le cycle sans raccourci)")
-    parser.add_argument("--direct", action="store_true",
-                        help="mode RISQUÉ : plus court chemin réel, sans cycle hamiltonien ni garantie de victoire")
-    parser.add_argument("--safety", type=int, default=1, choices=(0, 1),
-                        help="sécurité du mode --direct : 0 aucune, 1 la tête doit pouvoir rejoindre la queue")
-    parser.add_argument("--stall", type=int, default=3,
-                        help="mode --direct : après STALL x N coups sans pomme, on prend le chemin même dangereux")
-    parser.add_argument("--libre", action="store_true", help="active la couche 5 (raccourcis à travers les cases libres)")
-    parser.add_argument("--plan-budget", type=int, default=5000, help="budget d'opérations de la couche 5 par pomme")
+    parser.add_argument("--debug", action="store_true", help="vérifie le certificat à chaque coup")
     args = parser.parse_args()
 
     if not args.headless:
