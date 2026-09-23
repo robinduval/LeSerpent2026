@@ -1,0 +1,1 @@
+(HH:MM : Activité / Constatation / Hypothèse / Réponse)

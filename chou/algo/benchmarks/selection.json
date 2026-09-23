@@ -1,0 +1,30 @@
+{
+  "selected_policy": "all128",
+  "selection_rule_file": "benchmarks/finalists-freeze.json",
+  "held_out_results": "benchmark-results.json",
+  "reference_policy": "explored64",
+  "mean_steps_to_223": 4892.48,
+  "movement_reduction_percent": 19.232420082278445,
+  "target_4500_reached": false,
+  "remaining_gap_steps": 392.47999999999956,
+  "source_sha256_at_measurement": "9a196bb39ae2c1cbfe959b4d94f207ed40ab91e0027bb60d919ba1efce8804ff",
+  "delivered_source_sha256": "b8337b3b3b9ef847c16fc7c8259361b2828dbc2a7f4947799e36df13cdd6f177",
+  "post_freeze_changes": "Only DEFAULT_POLICY, launch/benchmark defaults and CLI help; engine and algorithm definitions unchanged.",
+  "best_held_out_run": {
+    "seed": 1063,
+    "score": 223,
+    "steps": 4247,
+    "seconds_x1": 849.4
+  },
+  "best_regression_run": {
+    "seed": 15,
+    "score": 223,
+    "steps": 4105,
+    "seconds_x1": 821.0
+  },
+  "tests": {
+    "passed": 47,
+    "seconds": 11.038
+  },
+  "ui_validation": "benchmarks/ui-validation.json"
+}
